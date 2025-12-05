@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  # Servizio Bancario in Jolie
+  bank-service:
+    build: 
+      context: ../src/bank-jolie
+    container_name: bank-service
+    ports:
+      - [cite_start]"8008:8008" 
+    networks:
+      - acme-net
+
+
+networks:
+  acme-net:
+    driver: bridge
