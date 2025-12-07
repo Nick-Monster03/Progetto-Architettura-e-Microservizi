@@ -1,14 +1,16 @@
 include "BankInterface.iol"
-// include "console.iol"  <-- Puoi commentare anche questo per ora, o lasciarlo
+from console import Console
 
-// Servizio Bancario ACMEMobility
 service BankService {
     
     execution: concurrent
 
     inputPort BankPort {
         location: "socket://localhost:8008"
-        protocol: soap 
+        protocol: soap {
+            .wsdl = "./BankService.wsdl";      
+            .wsdl.port = "BankPortServicePort" 
+        }
         interfaces: BankInterface
     }
 
@@ -16,30 +18,30 @@ service BankService {
         paymentToken: CommitRequest.token
     }
 
-    // embed Console as Console   <-- COMMENTA QUESTA RIGA
+    embed Console as Console 
 
     main {
         preAuthorize( request )( response ) {
             response.token = new;
             csets.paymentToken = response.token;
+            amountBlocked = 10.0; //Di default blocca sempre 10 euro
             
-            amountBlocked = request.amount
-            
-            // println@Console( "SESSIONE AVVIATA..." )();  <-- COMMENTA I PRINT
-            // println@Console( "Importo bloccato..." )()
+            println@Console( "--- RICHIESTA RICEVUTA ---" )();
+            println@Console( "Utente: " + request.userId )();
+            println@Console( "Importo bloccato: " + amountBlocked )();
+            println@Console( "Token generato: " + response.token )()
         };
 
         commitPayment( request )( ) {
+            println@Console( "--- COMMIT RICEVUTA ---" )();
+            println@Console( "Token: " + request.token )();
             
             if ( request.finalAmount <= amountBlocked ) {
-                // println@Console( "Pagamento coperto..." )()
-                nullProcess // Aggiungi questo se l'if rimane vuoto
+                println@Console( "Pagamento OK. Rilascio cauzione." )()
             } else {
-                diff = request.finalAmount - amountBlocked
-                // println@Console( "Addebito differenza..." )()
+                diff = request.finalAmount - amountBlocked;
+                println@Console( "Pagamento OK. Addebito differenza: " + diff )()
             }
-            
-            // println@Console( "TRANSAZIONE CONCLUSA..." )()
         }
     }
 }
