@@ -1,15 +1,31 @@
 version: '3.8'
 
+
 services:
-  # Servizio Bancario in Jolie
+  # --- Servizio Bancario Jolie (Già presente) ---
   bank-service:
-    build: 
+    build:
       context: ../src/bank-jolie
     container_name: bank-service
     ports:
-      - [cite_start]"8008:8008" 
+      - "8008:8008"
     networks:
       - acme-net
+
+
+  # --- Camunda Platform ---
+  camunda:
+    image: camunda/camunda-bpm-platform:run-latest
+    container_name: camunda
+    ports:
+      - "8080:8080" # Interfaccia web di Camunda
+    networks:
+      - acme-net
+    environment:
+      - DB_DRIVER=org.h2.Driver
+      - DB_URL=jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      - DB_USERNAME=sa
+      - DB_PASSWORD=sa
 
 
 networks:

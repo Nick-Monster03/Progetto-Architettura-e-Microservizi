@@ -1,49 +1,27 @@
-include "BankInterface.iol"
-include "console.iol"
-
-// Servizio Bancario ACMEMobility
-service BankService {
-    
-    // Esecuzione concorrente: ogni 'token' genera un processo (sessione) separato
-    execution: concurrent
-
-    inputPort BankPort {
-        location: "socket://localhost:8008"
-        protocol: soap 
-        interfaces: BankInterface
-    }
-
-    // Definizione del Correlation Set 
-    // Questo permette a Jolie di capire a quale sessione aperta inviare la richiesta di commitPayment
-    cset {
-        
-        paymentToken: CommitRequest.token
-    }
-
-    embed Console as Console
-
-    main {
-        preAuthorize( request )( response ) {
-            response.token = new;
-            
-            csets.paymentToken = response.token;
-            
-            amountBlocked = request.amount;
-            
-            println@Console( "SESSIONE AVVIATA. Token generato: " + response.token )();
-            println@Console( "Importo bloccato (cauzione): " + amountBlocked )()
-        }; 
-
-        commitPayment( request )( ) {
-            
-            if ( request.finalAmount <= amountBlocked ) {
-                println@Console( "Pagamento coperto interamente dalla cauzione." )()
-            } else {
-                diff = request.finalAmount - amountBlocked;
-                println@Console( "Addebito differenza di " + diff + " oltre la cauzione." )()
-            };
-
-            println@Console( "TRANSAZIONE CONCLUSA per token: " + csets.paymentToken )()
-        }
-    }
+type PreAuthRequest: void {
+    .userId: string     // Identificativo dell'utente
+    .amount: double     // Importo da bloccare (es. 10.0) [cite: 13]
 }
+
+// Risposta con il token di conferma della banca
+type PreAuthResponse: void {
+    .token: string      // Token univoco per la transazione [cite: 14]
+}
+
+// Tipo per il pagamento finale
+type CommitRequest: void {
+    .token: string      // Il token ricevuto nella fase precedente
+    .finalAmount: double // L'importo effettivo da addebitare [cite: 19]
+}
+
+// Definizione dell'interfaccia del servizio
+interface BankInterface {
+    RequestResponse:
+        // Operazione 1: Blocca i fondi (cauzione) [cite: 97]
+        preAuthorize( PreAuthRequest )( PreAuthResponse ),
+        
+        // Operazione 2: Addebito finale e sblocco cauzione [cite: 98]
+        commitPayment( CommitRequest )( void )
+}
+
+

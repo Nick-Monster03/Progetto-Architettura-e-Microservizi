@@ -1,38 +1,45 @@
-// Importiamo l'interfaccia definita precedentemente
 include "BankInterface.iol"
-// Importiamo la console per il logging [cite: 4928]
-include "console.iol"
+// include "console.iol"  <-- Puoi commentare anche questo per ora, o lasciarlo
 
-// Definizione del servizio Bancario
+// Servizio Bancario ACMEMobility
 service BankService {
     
-    // Esecuzione concorrente per gestire più richieste simultanee [cite: 501]
     execution: concurrent
 
-    // Configurazione della porta di input (dove il servizio ascolta)
     inputPort BankPort {
-        location: "socket://localhost:8008" // Indirizzo e porta [cite: 683]
-        protocol: soap                      // Protocollo richiesto dal progetto [cite: 1254]
-        interfaces: BankInterface           // Interfaccia esposta
+        location: "socket://localhost:8008"
+        protocol: soap 
+        interfaces: BankInterface
     }
 
-    // Embedding della console per stampare log a video [cite: 2283]
-    embed Console as Console
+    cset {
+        paymentToken: CommitRequest.token
+    }
+
+    // embed Console as Console   <-- COMMENTA QUESTA RIGA
 
     main {
-        // Implementazione preliminare dell'operazione di pre-autorizzazione
-        [ preAuthorize( request )( response ) {
-            // Logica simulata: generiamo un token fittizio
-            token = "BANK-TOKEN-" + new;
-            response.token = token;
+        preAuthorize( request )( response ) {
+            response.token = new;
+            csets.paymentToken = response.token;
             
-            // Log dell'operazione [cite: 2287]
-            println@Console( "Ricevuta pre-autorizzazione per utente: " + request.userId )()
-        }]
+            amountBlocked = request.amount
+            
+            // println@Console( "SESSIONE AVVIATA..." )();  <-- COMMENTA I PRINT
+            // println@Console( "Importo bloccato..." )()
+        };
 
-        // Implementazione preliminare del pagamento finale
-        [ commitPayment( request )( ) {
-            println@Console( "Pagamento finale confermato per token: " + request.token )()
-        }]
+        commitPayment( request )( ) {
+            
+            if ( request.finalAmount <= amountBlocked ) {
+                // println@Console( "Pagamento coperto..." )()
+                nullProcess // Aggiungi questo se l'if rimane vuoto
+            } else {
+                diff = request.finalAmount - amountBlocked
+                // println@Console( "Addebito differenza..." )()
+            }
+            
+            // println@Console( "TRANSAZIONE CONCLUSA..." )()
+        }
     }
 }
