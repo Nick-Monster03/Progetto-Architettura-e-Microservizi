@@ -1,5 +1,6 @@
 include "BankInterface.iol"
 from console import Console
+from time import Time
 
 service BankService {
     
@@ -19,18 +20,20 @@ service BankService {
     }
 
     embed Console as Console 
+    embed Time as Time
 
     main {
         preAuthorize( request )( response ) {
             response.token = new;
             csets.paymentToken = response.token;
-            amountBlocked = 10.0; //Di default blocca sempre 10 euro
-            
+             
             println@Console( "--- RICHIESTA RICEVUTA ---" )();
             println@Console( "Utente: " + request.userId )();
-            println@Console( "Importo bloccato: " + amountBlocked )();
             println@Console( "Token generato: " + response.token )()
         };
+
+        amountBlocked = 10.0; //Di default blocca sempre 10 euro
+        println@Console( "Importo bloccato: " + amountBlocked )();
 
         commitPayment( request )( ) {
             println@Console( "--- COMMIT RICEVUTA ---" )();
@@ -42,6 +45,9 @@ service BankService {
                 diff = request.finalAmount - amountBlocked;
                 println@Console( "Pagamento OK. Addebito differenza: " + diff )()
             }
-        }
+        };
+        
+        // Attendi un attimo prima di chiudere la sessione per assicurare l'invio della risposta
+        sleep@Time(500)() 
     }
 }
