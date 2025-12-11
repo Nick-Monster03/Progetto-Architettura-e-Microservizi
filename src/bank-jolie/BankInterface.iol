@@ -1,22 +1,28 @@
-type PreAuthRequest: void {
-    .userId: string     
-    .veichleId: string
+
+type PreAuthRequest {
+    clientName: string
+    cardNumber: string
 }
 
-type PreAuthResponse: void {
-    .token: string      
+type PreAuthResponse {
+    paymentToken: string 
+    success: bool
+    message: string
 }
 
-type CommitRequest: void {
-    .token: string      
-    .finalAmount: double 
-    .veichleId: string
-    .userId: string
+type PaymentRequest {
+    paymentToken: string 
+    amount: double
 }
+
+type PaymentResponse {
+    txId: string
+    success: bool
+    message: string
+}
+
 interface BankInterface {
     RequestResponse:
         preAuthorize( PreAuthRequest )( PreAuthResponse ),
-        commitPayment( CommitRequest )( void )
+        executePayment( PaymentRequest )( PaymentResponse )
 }
-
-

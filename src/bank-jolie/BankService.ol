@@ -1,6 +1,6 @@
 include "BankInterface.iol"
-from console import Console
-from time import Time
+include "console.iol"
+include "time.iol"
 
 service BankService {
     
@@ -10,44 +10,53 @@ service BankService {
         location: "socket://localhost:8008"
         protocol: soap {
             .wsdl = "./BankService.wsdl";      
-            .wsdl.port = "BankPortServicePort" 
+            .wsdl.port = "BankPortServicePort";
+            .dropRootValue = true
         }
         interfaces: BankInterface
     }
 
     cset {
-        paymentToken: CommitRequest.token
+        paymentToken: PaymentRequest.paymentToken
     }
 
-    embed Console as Console 
-    embed Time as Time
+    // embed Console as Console 
+    // embed Time as Time
 
     main {
         preAuthorize( request )( response ) {
-            response.token = new;
-            csets.paymentToken = response.token;
-             
-            println@Console( "--- RICHIESTA RICEVUTA ---" )();
-            println@Console( "Utente: " + request.userId )();
-            println@Console( "Token generato: " + response.token )()
-        };
-
-        amountBlocked = 10.0; //Di default blocca sempre 10 euro
-        println@Console( "Importo bloccato: " + amountBlocked )();
-
-        commitPayment( request )( ) {
-            println@Console( "--- COMMIT RICEVUTA ---" )();
-            println@Console( "Token: " + request.token )();
+            response.paymentToken = new;
             
-            if ( request.finalAmount <= amountBlocked ) {
-                println@Console( "Pagamento OK. Rilascio cauzione." )()
-            } else {
-                diff = request.finalAmount - amountBlocked;
-                println@Console( "Pagamento OK. Addebito differenza: " + diff )()
-            }
+            csets.paymentToken = response.paymentToken;
+             
+            response.success = true;
+            response.message = "Pre-auth OK";
+
+            println@Console( "--- [NEW SESSION] RICHIESTA RICEVUTA ---" )();
+            println@Console( "Cliente: " + request.clientName )();
+            println@Console( "Token (SID): " + response.paymentToken )()
         };
-        
-        // Attendi un attimo prima di chiudere la sessione per assicurare l'invio della risposta
-        sleep@Time(500)() 
+
+        amountBlocked = 10.0; 
+        println@Console( "Stato Sessione: Bloccati " + amountBlocked + " EUR. In attesa di PaymentRequest..." )();
+
+        executePayment( request )( response ) {
+            undef(response);
+            println@Console( "--- [RESUME SESSION] PAGAMENTO RICEVUTO ---" )();
+            println@Console( "Token ricevuto: " + request.paymentToken )();
+            
+            if ( request.amount <= amountBlocked ) {
+                diff = amountBlocked - request.amount;
+                response.success = true;
+                response.message = "Pagamento OK. Rilascio: " + diff
+            } else {
+                extra = request.amount - amountBlocked;
+                response.success = true;
+                response.message = "Pagamento OK. Addebito extra: " + extra
+            };
+            response.txId = "TX-" + request.paymentToken;
+            println@Console( response.message )();
+            sleep@Time( 500 )()
+        }
     }
 }

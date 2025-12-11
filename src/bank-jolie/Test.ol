@@ -1,49 +1,38 @@
-from console import Console
 include "BankInterface.iol"
+include "console.iol"
+include "time.iol"
 
-service TestClient {
-    embed Console as Console
+outputPort BankService {
+    Location: "socket://localhost:8008"
+    Protocol: soap
+    Interfaces: BankInterface
+}
 
-    outputPort BankService {
-        location: "socket://localhost:8008"
-        protocol: soap {
-            .wsdl = "./BankService.wsdl"
-        }
-        interfaces: BankInterface
-    }
+main {
+    
+    println@Console( "1. Invio richiesta Pre-Auth..." )();
+    authReq.clientName = "MarioRossi";
+    authReq.cardNumber = "1234-5678-9012-3456";
+    
+    preAuthorize@BankService( authReq )( authResp );
 
-    main {
-        println@Console("Tento la connessione al server sulla porta 8008...")();
-        
-        with( preAuthReq ) {
-            .userId = "MarioRossi";
-            .veichleId = "AB123CD"
-        };
-        
-        println@Console("Invio richiesta pre-autorizzazione...")();
-        
-        scope( call ) {
-            install( default => 
-                v = main.exception;
-                println@Console("Errore: " + v.name )();
-                println@Console("Dettagli: " + v )()
-            );
+    if ( authResp.success ) {
+        token = authResp.paymentToken;
+        println@Console( "   OK! Token ricevuto: " + token )();
+        println@Console( "   (Sessione creata sul server. Attendo 2 secondi...)" )()
+    } else {
+        println@Console( "   Errore Pre-Auth!" )()
+    };
 
-            
-            preAuthorize@BankService( preAuthReq )( preAuthRes );
-            token = preAuthRes.token;
-            println@Console( "Connessione OK! Token ricevuto: " + token )();
+    // Simuliamo il tempo del viaggio
+    sleep@Time( 2000 )();
 
-            with( commitReq ) {
-                .token = token;
-                .userId = preAuthReq.userId;
-                .veichleId = preAuthReq.veichleId;
-                .finalAmount = 8.50
-            };
-            
-            println@Console("Invio commit pagamento...")();
-            commitPayment@BankService( commitReq )();
-            println@Console("Pagamento completato!")()
-        }
-    }
+    
+    println@Console( "2. Invio richiesta Pagamento Finale..." )();
+    
+    payReq.paymentToken = token;  
+    executePayment@BankService( payReq )( payResp );
+    
+    println@Console( "   Risposta Server: " + payResp.message )();
+    println@Console( "   ID Transazione: " + payResp.txId )()
 }
