@@ -1,11 +1,7 @@
-
-
-
 type StartTrackingRequest {
     vehicleId: string
     userId: string
-    time: int //in millisecondi con getCurrentTimeMillis() otteniamo il tempoa attuale 
-    //in millisecondi e con getTimeFromMilliSeconds() otteniamo la stringa con la data e l'ora 
+    time: int // timestamp in millisecondi
 }
 
 type StartTrackingResponse {
@@ -16,14 +12,15 @@ type StartTrackingResponse {
 type StopTrackingRequest {
     vehicleId: string
     userId: string
-    time: int //in millisecondi
-    battery: int
+    time: int 
+    battery: int 
 }
 
 type StopTrackingResponse {
     success: bool
     message: string
 }
+
 type GetStatusRequest {
     userId: string
     vehicleId: string
@@ -42,6 +39,4 @@ interface FleetInterface {
         startTracking(StartTrackingRequest)(StartTrackingResponse),
         stopTracking(StopTrackingRequest)(StopTrackingResponse),
         getStatus(GetStatusRequest)(GetStatusResponse)
-
-        
 }
