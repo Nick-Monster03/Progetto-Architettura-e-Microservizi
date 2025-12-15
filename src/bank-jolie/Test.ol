@@ -29,9 +29,9 @@ main {
 
     
     println@Console( "2. Invio richiesta Pagamento Finale..." )();
-    
+    payReq.amount = 15.50;
     payReq.paymentToken = token;  
-    executePayment@BankService( payReq )( payResp );
+    commitPayment@BankService( payReq )( payResp );
     
     println@Console( "   Risposta Server: " + payResp.message )();
     println@Console( "   ID Transazione: " + payResp.txId )()

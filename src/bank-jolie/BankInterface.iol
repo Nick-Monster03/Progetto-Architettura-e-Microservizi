@@ -24,5 +24,5 @@ type PaymentResponse {
 interface BankInterface {
     RequestResponse:
         preAuthorize( PreAuthRequest )( PreAuthResponse ),
-        executePayment( PaymentRequest )( PaymentResponse )
+        commitPayment( PaymentRequest )( PaymentResponse )
 }

@@ -40,7 +40,7 @@ service BankService {
         amountBlocked = 10.0; 
         println@Console( "Stato Sessione: Bloccati " + amountBlocked + " EUR. In attesa di PaymentRequest..." )();
 
-        executePayment( request )( response ) {
+        commitPayment( request )( response ) {
             undef(response);
             println@Console( "--- [RESUME SESSION] PAGAMENTO RICEVUTO ---" )();
             println@Console( "Token ricevuto: " + request.paymentToken )();
