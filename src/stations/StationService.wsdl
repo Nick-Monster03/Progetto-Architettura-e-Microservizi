@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="http://acmemobility.org/station.wsdl" xmlns:xsd1="http://acmemobility.org/station.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://acmemobility.org/station.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+  <wsdl:types>
+    <xs:schema targetNamespace="http://acmemobility.org/station.xsd" xmlns:sch="http://acmemobility.org/station.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="unlock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="unlockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+  </wsdl:types>
+  <wsdl:message name="UnlockResponse">
+    <wsdl:part name="body" element="xsd1:unlockResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="UnlockRequest">
+    <wsdl:part name="body" element="xsd1:unlock">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="LockRequest">
+    <wsdl:part name="body" element="xsd1:lock">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="LockResponse">
+    <wsdl:part name="body" element="xsd1:lockResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:portType name="StationPort">
+    <wsdl:operation name="unlock">
+      <wsdl:input message="tns:UnlockRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:UnlockResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="lock">
+      <wsdl:input message="tns:LockRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:LockResponse">
+    </wsdl:output>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="StationPortSOAPBinding" type="tns:StationPort">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="unlock">
+      <soap:operation soapAction="unlock" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="lock">
+      <soap:operation soapAction="lock" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="StationPortService">
+    <wsdl:port name="StationPortServicePort" binding="tns:StationPortSOAPBinding">
+      <soap:address location="socket://localhost:8083"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

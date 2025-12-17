@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  bank-service:
+    build:
+      context: ../src/bank-jolie
+    container_name: bank-service
+    ports:
+      - "8008:8008"
+    networks:
+      - acme-net
+
+  camunda:
+    image: camunda/camunda-bpm-platform:latest
+    container_name: camunda
+    ports:
+      - "8080:8080"
+    networks:
+      - acme-net
+    environment:
+      - DB_DRIVER=org.h2.Driver
+      - DB_URL=jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      - DB_USERNAME=sa
+      - DB_PASSWORD=sa
+
+networks:
+  acme-net:
+    driver: bridge

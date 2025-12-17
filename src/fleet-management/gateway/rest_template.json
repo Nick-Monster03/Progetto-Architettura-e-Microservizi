@@ -1,0 +1,11 @@
+{
+    "startTracking": {
+        "method": "post"
+    },
+    "stopTracking": {
+        "method": "post"
+    },
+    "getStatus": {
+        "method": "get"
+    }
+}
