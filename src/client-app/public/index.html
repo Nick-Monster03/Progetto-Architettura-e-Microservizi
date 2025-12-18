@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ACMEMobility App</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background: #2ecc71;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        #map {
+            flex-grow: 1;
+            z-index: 1;
+        }
+
+        #controls {
+            padding: 15px;
+            background: white;
+            border-top: 2px solid #ddd;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2c3e50;
+        }
+
+        button.rent {
+            background: #e67e22;
+        }
+
+        button.rent:hover {
+            background: #d35400;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header">⚡ ACMEMobility Client</div>
+
+    <div id="map"></div>
+
+    <div id="controls">
+        <div id="login-panel">
+            <input type="text" id="username" placeholder="Tuo Nome Utente" value="MarioRossi">
+            <button onclick="app.login()">Entra</button>
+        </div>
+
+        <div id="action-panel" class="hidden">
+            <span id="user-display" style="font-weight:bold; margin-right:10px;"></span>
+            <button onclick="app.refreshMap()">🔄 Aggiorna Mappa</button>
+            <button class="rent" onclick="app.scanQR()">📸 Scan QR Noleggio</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
