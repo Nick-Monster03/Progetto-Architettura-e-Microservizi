@@ -20,47 +20,120 @@ service StationService {
     }
 
     init {
-        // Simulazione dello stato puramente di DEBUG
-        global.station_vehicles.("v-test").locked = true
-        global.station_vehicles.("v-test").station = "Stazione-Termini"
-        println@Console("Station Service (SOAP) avviato sulla porta 8083")()
+        println@Console("--- STATION SERVICE AVVIATO (Porta 8083) ---")();
+        
+        // Veicolo 1: Libero a Termini
+        global.station_vehicles.("v1").locked = true
+        global.station_vehicles.("v1").station = "Termini"
+        global.station_vehicles.("v1").reserved = false
+
+        // Veicolo 2: Libero a Tiburtina
+        global.station_vehicles.("v2").locked = true
+        global.station_vehicles.("v2").station = "Tiburtina"
+        global.station_vehicles.("v2").reserved = false
+
+        // Veicolo 3: Già prenotato (per testare fallimenti)
+        global.station_vehicles.("v3").locked = true
+        global.station_vehicles.("v3").station = "Eur-Fermi"
+        global.station_vehicles.("v3").reserved = true
+        global.station_vehicles.("v3").reservedBy = "user_b" // Prenotato da un altro
     }
 
     main {
 
-        unlock( request )( response ) {
+        [ reserve( request )( response ) {
             id = request.vehicleId;
-            println@Console( "[UNLOCK-REQ] Veicolo: " + id + " Utente: " + request.userId )();
+            user = request.userId;
+            println@Console( "[RESERVE] Richiesta per veicolo " + id + " da utente " + user )();
+
+            synchronized( lock ) {
+                if ( !is_defined( global.station_vehicles.(id) ) ) {
+                    response.success = false;
+                    response.message = "Veicolo non esistente"
+                } 
+                else if ( global.station_vehicles.(id).locked && !global.station_vehicles.(id).reserved ) {
+                    global.station_vehicles.(id).reserved = true;
+                    global.station_vehicles.(id).reservedBy = user;
+                    
+                    response.success = true;
+                    response.message = "Veicolo prenotato con successo per 30 min."
+                } else {
+                    response.success = false;
+                    response.message = "Veicolo non disponibile (in uso o già prenotato)."
+                }
+            }
+        } ]
+
+        [ unlock( request )( response ) {
+            id = request.vehicleId;
+            user = request.userId;
+            println@Console( "[UNLOCK] Tentativo sblocco " + id + " utente " + user )();
             
             synchronized( lock ) {
-                // Logica simulata: sblocca sempre se il veicolo esiste (o lo crea al volo per test)
                 if ( !is_defined( global.station_vehicles.(id) ) ) {
-                     global.station_vehicles.(id).station = "Stazione-Virtuale"
+                     // Fallback per test: creiamo veicolo al volo se non esiste
+                     global.station_vehicles.(id).locked = true;
+                     global.station_vehicles.(id).reserved = false;
+                     println@Console( "WARNING: Veicolo creato al volo per test." )()
+                };
+
+                canUnlock = false;
+                
+                //Veicolo Prenotato
+                if ( global.station_vehicles.(id).reserved ) {
+                    if ( global.station_vehicles.(id).reservedBy == user ) {
+                        println@Console( "-> OK: Utente corrisponde alla prenotazione." )();
+                        canUnlock = true;
+                        // Consumiamo la prenotazione
+                        global.station_vehicles.(id).reserved = false;
+                        undef( global.station_vehicles.(id).reservedBy )
+                    } else {
+                        println@Console( "-> ERRORE: Veicolo riservato a un altro utente!" )();
+                        canUnlock = false;
+                        response.message = "Veicolo riservato ad un altro utente."
+                    }
+                } 
+                //Noleggio Immediato
+                else {
+                    if ( global.station_vehicles.(id).locked ) {
+                        println@Console( "-> OK: Noleggio immediato." )();
+                        canUnlock = true
+                    } else {
+                        println@Console( "-> ERRORE: Veicolo già in uso." )();
+                        canUnlock = false;
+                        response.message = "Veicolo già in uso."
+                    }
                 };
                 
-                global.station_vehicles.(id).locked = false;
-                
-                csets.sid = new;
-                response.sid = csets.sid;
-                
-                response.success = true;
-                response.message = "Veicolo sbloccato correttamente."
+                if ( canUnlock ) {
+                    global.station_vehicles.(id).locked = false;
+                    
+                    csets.sid = new;
+                    response.sid = csets.sid;
+                    
+                    response.success = true;
+                    response.message = "Veicolo sbloccato. Buon viaggio!"
+                } else {
+                    response.success = false;
+                    // message già settato sopra
+                    response.sid = ""
+                }
             }
-        };
+        } ]
 
-        [lock( request )( response ) {
-            undef(response)
+        [ lock( request )( response ) {
             id = request.vehicleId;
             station = request.stationId;
-            println@Console( "[LOCK-REQ] Veicolo: " + id + " presso " + station )();
+            println@Console( "[LOCK] Riconsegna veicolo " + id + " a " + station )();
 
             synchronized( lock ) {
                 global.station_vehicles.(id).locked = true;
-                global.station_vehicles.(id).station = station
+                global.station_vehicles.(id).station = station;
+                global.station_vehicles.(id).reserved = false 
             };
 
             response.success = true;
             response.message = "Veicolo bloccato e parcheggiato."
-        }]
+        } ]
     }
 }
