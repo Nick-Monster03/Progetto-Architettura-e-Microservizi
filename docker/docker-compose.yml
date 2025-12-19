@@ -10,18 +10,81 @@ services:
     networks:
       - acme-net
 
-  camunda:
-    image: camunda/camunda-bpm-platform:latest
-    container_name: camunda
-    ports:
-      - "8080:8080"
+  tracking-service:
+    build:
+      context: ../src/fleet-management/tracking
+    container_name: tracking-service
+    expose:
+      - "8084"
     networks:
       - acme-net
+
+  battery-service:
+    build:
+      context: ../src/fleet-management/battery
+    container_name: battery-service
+    expose:
+      - "8085"
+    networks:
+      - acme-net
+  
+  calculator-service:
+    build:
+      context: ../src/service-utils
+    container_name: calculator-service
+    expose:
+      - "8089"
+    networks:
+      - acme-net
+
+  fleet-gateway:
+    build:
+      context: ../src/fleet-management/gateway
+    container_name: fleet-gateway
+    ports:
+      - "8082:8082"
     environment:
-      - DB_DRIVER=org.h2.Driver
-      - DB_URL=jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-      - DB_USERNAME=sa
-      - DB_PASSWORD=sa
+      - TRACKING_HOST=tracking-service
+      - BATTERY_HOST=battery-service
+      - CALCULATOR_HOST=calculator-service
+    depends_on:
+      - tracking-service
+      - battery-service
+      - calculator-service
+    networks:
+      - acme-net
+
+  station-service:
+    build:
+      context: ../src/stations
+    container_name: station-service
+    ports:
+      - "8083:8083"
+    networks:
+      - acme-net
+
+  simulator:
+    build:
+      context: ../src/simulation
+    container_name: acme-simulator
+    environment:
+      - TRACKING_HOST=tracking-service
+      - BATTERY_HOST=battery-service
+    depends_on:
+      - tracking-service
+      - battery-service
+    networks:
+      - acme-net
+
+  camunda:
+    image: camunda/camunda-bpm-platform:run-latest
+    container_name: acme-camunda
+    ports:
+      - "8080:8080"
+    environment:
+      - CAMUNDA_bpm_run_cors_enabled=true
+    networks:
+      - acme-net
 
 networks:
   acme-net:
