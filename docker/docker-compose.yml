@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Servizio Bancario (Jolie)
   bank-service:
     build:
       context: ../src/bank-jolie
@@ -10,6 +11,52 @@ services:
     networks:
       - acme-net
 
+  # Fleet Gateway (Jolie - REST API)
+  fleet-gateway:
+    build:
+      context: ../src/fleet-management
+      # Indichiamo a Docker dove si trova il Dockerfile all'interno del contesto
+      dockerfile: gateway/Dockerfile
+    container_name: fleet-gateway
+    ports:
+      - "8082:8082"
+    networks:
+      - acme-net
+    depends_on:
+      - tracking-service
+      - battery-service
+
+  # Tracking Microservice (Jolie - Internal)
+  tracking-service:
+    build:
+      context: ../src/fleet-management/tracking
+    container_name: tracking-service
+    expose:
+      - "8084" # Non serve esporlo all'host, basta alla rete interna
+    networks:
+      - acme-net
+
+  # Battery Microservice (Jolie - Internal)
+  battery-service:
+    build:
+      context: ../src/fleet-management/battery
+    container_name: battery-service
+    expose:
+      - "8085"
+    networks:
+      - acme-net
+
+  # Station Service (Jolie - SOAP)
+  station-service:
+    build:
+      context: ../src/stations
+    container_name: station-service
+    ports:
+      - "8083:8083" # Esposto per Camunda
+    networks:
+      - acme-net
+
+  # Camunda BPMS
   camunda:
     image: camunda/camunda-bpm-platform:latest
     container_name: camunda
@@ -22,6 +69,15 @@ services:
       - DB_URL=jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
       - DB_USERNAME=sa
       - DB_PASSWORD=sa
+
+  client-app:
+    build:
+      context: ../src/client-app
+    container_name: client-app
+    ports:
+      - "3000:3000" # Espone il sito sulla porta 3000
+    networks:
+      - acme-net
 
 networks:
   acme-net:

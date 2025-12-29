@@ -4,6 +4,7 @@ const app = {
     map: null,
     user: null,
     markers: {},
+    currentRentalId: null,
 
     init: function () {
         // Inizializza mappa su Roma
@@ -20,6 +21,56 @@ const app = {
         this.user = user;
 
         document.getElementById('login-panel').classList.add('hidden');
+        document.getElementById('action-panel').classList.remove('hidden');
+        document.getElementById('user-display').innerText = "Ciao, " + user;
+
+        this.refreshMap();
+    },
+
+    // Mostra/Nascondi il form di registrazione
+    showRegister: function() {
+        document.getElementById('register-panel').classList.remove('hidden');
+        document.getElementById('login-panel').classList.add('hidden');
+    },
+
+    hideRegister: function() {
+        document.getElementById('register-panel').classList.add('hidden');
+        document.getElementById('login-panel').classList.remove('hidden');
+    },
+
+    // Chiama il Gateway per registrare l'utente
+    register: function() {
+        const user = document.getElementById('reg-username').value;
+        const pass = document.getElementById('reg-password').value;
+
+        if (!user || !pass) return alert("Inserisci username e password!");
+
+        fetch(`${GATEWAY_URL}/registerUser`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert(res.message);
+            if (res.success) {
+                this.hideRegister(); // Torna al login
+                // Precompila il login per comodità
+                document.getElementById('username').value = user;
+            }
+        })
+        .catch(err => alert("Errore connessione: " + err));
+    },
+
+    login: function () {
+        const user = document.getElementById('username').value;
+        // Per ora manteniamo il login semplice lato client, 
+        // ma potremmo aggiungere una chiamata verifyLogin al Gateway in futuro.
+        if (!user) return alert("Inserisci un nome utente");
+        
+        this.user = user;
+        document.getElementById('login-panel').classList.add('hidden');
+        document.getElementById('register-panel').classList.add('hidden'); // Nascondi tutto
         document.getElementById('action-panel').classList.remove('hidden');
         document.getElementById('user-display').innerText = "Ciao, " + user;
 
@@ -86,27 +137,78 @@ const app = {
         if (vid) this.startRental(vid);
     },
 
-    // Chiama POST /startTracking definito nel Gateway Jolie
     startRental: function (vehicleId) {
         fetch(`${GATEWAY_URL}/startTracking`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                vehicleId: vehicleId,
-                userId: this.user
-            })
+            body: JSON.stringify({ vehicleId: vehicleId, userId: this.user })
         })
-            .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                this.refreshMap(); // Aggiorna la mappa per vedere il cambio di stato
-            })
-            .catch(err => alert("Errore durante il noleggio: " + err));
+        .then(res => res.json())
+        .then(res => {
+            if(res.success) {
+                alert("🛴 Noleggio Avviato! Buon viaggio.");
+                this.currentRentalId = vehicleId;
+                this.updateUIForRental(true); // Cambia la grafica
+                this.refreshMap();
+            } else {
+                alert("Errore: " + res.message);
+            }
+        });
+    },
+
+    stopRental: function () {
+        if (!this.currentRentalId) return;
+
+        fetch(`${GATEWAY_URL}/stopTracking`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vehicleId: this.currentRentalId, userId: this.user })
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert(res.message); // Mostra messaggio con costo o batteria
+            this.currentRentalId = null;
+            this.updateUIForRental(false); // Ripristina grafica normale
+            this.refreshMap();
+        });
+    },
+
+    // Gestisce la visibilità dei bottoni
+    updateUIForRental: function (isRenting) {
+        const actionPanel = document.getElementById('action-panel');
+        if (isRenting) {
+            // Mostra solo il tasto TERMINA
+            actionPanel.innerHTML = `
+                <span style="font-weight:bold; color:red;">🔴 In Noleggio: ${this.currentRentalId}</span>
+                <button onclick="app.stopRental()" style="background:#c0392b;">🛑 Termina Noleggio</button>
+            `;
+        } else {
+            // Ripristina i tasti standard
+            actionPanel.innerHTML = `
+                <span id="user-display">Ciao, ${this.user}</span>
+                <button onclick="app.refreshMap()">🔄 Aggiorna</button>
+                <button class="rent" onclick="app.scanQR()">📸 Scan QR</button>
+            `;
+        }
     },
 
     prenota: function (vehicleId) {
-        alert("Funzionalità Prenotazione da collegare al processo BPMN (Task C)");
-    }
+        if (!this.user) return alert("Devi fare il login prima!");
+        
+        if (!confirm(`Vuoi prenotare il veicolo ${vehicleId} per 30 minuti?`)) return;
+
+        fetch(`${GATEWAY_URL}/bookVehicle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vehicleId: vehicleId, userId: this.user })
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert(res.message);
+            this.refreshMap(); // Aggiorna per vedere il veicolo rosso (o prenotato)
+        })
+        .catch(err => alert("Errore prenotazione: " + err));
+    },
 };
 
 // Avvio applicazione

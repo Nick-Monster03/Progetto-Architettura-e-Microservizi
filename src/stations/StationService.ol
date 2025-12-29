@@ -10,7 +10,7 @@ service StationService {
     }
 
     inputPort StationPort {
-        Location: "socket://localhost:8083" 
+        Location: "socket://0.0.0.0:8083"
         Protocol: soap {
             .wsdl = "./StationService.wsdl";
             .wsdl.port = "StationPortServicePort";

@@ -73,6 +73,23 @@
 </head>
 
 <body>
+    <div id="login-panel">
+        <h3>🔐 Accesso Utente</h3>
+        <input type="text" id="username" placeholder="Nome Utente">
+        <input type="password" id="password" placeholder="Password">
+        <br><br>
+        <button onclick="app.login()">Entra</button>
+        <button style="background:#8e44ad;" onclick="app.showRegister()">Crea Account</button>
+    </div>
+
+        <div id="register-panel" class="hidden" style="padding:15px; border-top:1px solid #ccc; margin-top:10px;">
+            <h3>📝 Nuova Registrazione</h3>
+            <input type="text" id="reg-username" placeholder="Scegli Nome Utente">
+            <input type="password" id="reg-password" placeholder="Scegli Password">
+            <br><br>
+            <button style="background:#27ae60;" onclick="app.register()">Conferma Registrazione</button>
+            <button style="background:#95a5a6;" onclick="app.hideRegister()">Annulla</button>
+        </div>
     <div id="header">⚡ ACMEMobility Client</div>
 
     <div id="map"></div>

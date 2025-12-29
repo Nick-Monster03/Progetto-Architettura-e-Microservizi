@@ -7,7 +7,7 @@ service BatteryService {
     
 
     inputPort BatterySocket {
-        Location: "socket://localhost:8085"
+        Location: "socket://0.0.0.0:8085"
         Protocol: sodep
         Interfaces: BatteryInterface
     }
