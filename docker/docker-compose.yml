@@ -11,28 +11,13 @@ services:
     networks:
       - acme-net
 
-  # Fleet Gateway (Jolie - REST API)
-  fleet-gateway:
-    build:
-      context: ../src/fleet-management
-      # Indichiamo a Docker dove si trova il Dockerfile all'interno del contesto
-      dockerfile: gateway/Dockerfile
-    container_name: fleet-gateway
-    ports:
-      - "8082:8082"
-    networks:
-      - acme-net
-    depends_on:
-      - tracking-service
-      - battery-service
-
   # Tracking Microservice (Jolie - Internal)
   tracking-service:
     build:
       context: ../src/fleet-management/tracking
     container_name: tracking-service
     expose:
-      - "8084" # Non serve esporlo all'host, basta alla rete interna
+      - "8084" # Esposto solo nella rete interna
     networks:
       - acme-net
 
@@ -46,36 +31,77 @@ services:
     networks:
       - acme-net
 
+  # Calculator Service (Jolie - Internal)
+  calculator-service:
+    build:
+      context: ../src/service-utils
+    container_name: calculator-service
+    expose:
+      - "8089"
+    networks:
+      - acme-net
+
+  # Fleet Gateway (Jolie - REST API + SOAP Client)
+  fleet-gateway:
+    build:
+      context: ../src/fleet-management
+      dockerfile: gateway/Dockerfile
+    container_name: fleet-gateway
+    ports:
+      - "8082:8082"
+    environment:
+      - TRACKING_HOST=tracking-service
+      - BATTERY_HOST=battery-service
+      - CALCULATOR_HOST=calculator-service
+    depends_on:
+      - tracking-service
+      - battery-service
+      - calculator-service
+    networks:
+      - acme-net
+
   # Station Service (Jolie - SOAP)
   station-service:
     build:
       context: ../src/stations
     container_name: station-service
     ports:
-      - "8083:8083" # Esposto per Camunda
+      - "8083:8083"
+    networks:
+      - acme-net
+
+  # Simulator Service 
+  simulator:
+    build:
+      context: ../src/simulation
+    container_name: acme-simulator
+    environment:
+      - TRACKING_HOST=tracking-service
+      - BATTERY_HOST=battery-service
+    depends_on:
+      - tracking-service
+      - battery-service
     networks:
       - acme-net
 
   # Camunda BPMS
   camunda:
-    image: camunda/camunda-bpm-platform:latest
-    container_name: camunda
+    image: camunda/camunda-bpm-platform:run-latest
+    container_name: acme-camunda
     ports:
       - "8080:8080"
+    environment:
+      - CAMUNDA_bpm_run_cors_enabled=true
     networks:
       - acme-net
-    environment:
-      - DB_DRIVER=org.h2.Driver
-      - DB_URL=jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-      - DB_USERNAME=sa
-      - DB_PASSWORD=sa
 
+  # Client Frontend 
   client-app:
     build:
       context: ../src/client-app
     container_name: client-app
     ports:
-      - "3000:3000" # Espone il sito sulla porta 3000
+      - "3000:3000"
     networks:
       - acme-net
 

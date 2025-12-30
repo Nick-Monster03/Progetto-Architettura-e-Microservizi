@@ -1,17 +1,19 @@
 include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
+include "../../service-utils/CostCalculatorInterface.iol"
+from time import Time
 from console import Console
 
 service FleetGateway {
     execution: concurrent
 
-    // Configurazione porta HTTP pubblica (REST API)
+    // --- INTERFACCIA ESTERNA (REST/JSON per il Client) ---
+    // Manteniamo la configurazione DevMatte per compatibilità Frontend/Docker
     inputPort FleetPublicPort {
         Location: "socket://0.0.0.0:8082"    
         Protocol: http { 
             .format = "json";
-            // Mappatura metodi HTTP alle operazioni Jolie
             .osc.startTracking.method = "post";
             .osc.registerUser.method = "post";
             .osc.stopTracking.method = "post";
@@ -19,9 +21,9 @@ service FleetGateway {
             .osc.getStatus.method = "get";
             .osc.getMap.method = "get";
             
-            // --- Gestione CORS per chiamate da browser ---
+            // Gestione CORS necessaria per il browser
             .osc.handleOptions.method = "options";
-            .default = "handleOptions"; // Gestisce tutte le richieste non mappate (es. preflight)
+            .default = "handleOptions";
             .response.headers.("Access-Control-Allow-Origin") = "*";
             .response.headers.("Access-Control-Allow-Methods") = "GET, POST, OPTIONS, PUT, DELETE";
             .response.headers.("Access-Control-Allow-Headers") = "Content-Type"
@@ -29,50 +31,90 @@ service FleetGateway {
         Interfaces: FleetInterface
     }
 
-    // Collegamenti ai microservizi interni
+    // --- SERVIZI INTERNI (SOAP per Backend SOA) ---
+    
+    // Tracking Service
     outputPort Tracking {
+        // Usa il nome del servizio Docker (da DevMatte) ma protocollo SOAP (da develope/traccia)
         Location: "socket://tracking-service:8084" 
-        Protocol: sodep
+        Protocol: soap { .dropRootValue = true }
         Interfaces: TrackingInterface
     }
 
+    // Battery Service
     outputPort Battery {
         Location: "socket://battery-service:8085" 
-        Protocol: sodep
+        Protocol: soap { .dropRootValue = true }
         Interfaces: BatteryInterface
     }
- 
+
+    // Calculator Service (aggiunto da develope)
+    outputPort CalculatorPort {
+        // Corretto localhost -> calculator-service per Docker
+        Location: "socket://calculator-service:8089" 
+        Protocol: soap { .dropRootValue = true }
+        Interfaces: CostCalculatorInterface
+    }
+
     embed Console as Console
 
     main {
         
-        // Avvia il monitoraggio (cambia stato veicolo a RENTED)
+        // Avvia il monitoraggio
         [ startTracking( request )( response ) {
+            // Validazione (DevMatte)
             if ( is_defined( request.vehicleId ) ) {
                 println@Console("[GATEWAY] Start Tracking: " + request.vehicleId)();
+                
+                // Logica SOA
                 setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RENTED" } )();
+                
+                // Salvataggio tempo inizio (develope)
+                // Se il client non manda il tempo, usiamo quello attuale (opzionale)
+                if ( !is_defined(request.time) ) {
+                    request.time = new
+                };
+                global.starting_times.(request.vehicleId) = request.time;
+
                 response.success = true;
                 response.message = "Monitoraggio avviato"
             } else {
-                // Gestione errore input
                 println@Console("[GATEWAY] Errore startTracking: vehicleId mancante!")();
                 response.success = false;
                 response.message = "Errore: Parametro 'vehicleId' obbligatorio."
             }
         } ]
 
-        // Termina il noleggio e recupera info finali
+        // Termina il noleggio
         [ stopTracking( request )( response ) {
+            // Validazione (DevMatte)
             if ( is_defined( request.vehicleId ) ) {
                 println@Console("[GATEWAY] Stop Tracking: " + request.vehicleId)();
                 
-                // Aggiorna stato e recupera info e batteria
+                // 1. Aggiornamento stato
                 setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "AVAILABLE" } )();
+                
+                // 2. Recupero dati per calcolo
                 getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
                 getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
 
+                // 3. Calcolo Costo (Logica develope)
+                costMsg = "";
+                if ( is_defined( global.starting_times.(request.vehicleId) ) ) {
+                    start_time = global.starting_times.(request.vehicleId);
+                    // Se request.time manca, usa timestamp attuale fittizio o ricevuto
+                    if ( !is_defined(request.time) ) request.time = start_time + 600000; // fallback 10 min
+
+                    // Calcolo minuti (ms / 60000)
+                    minutes = (request.time - start_time) / 60000;
+                    if ( minutes < 1 ) minutes = 1; // Minimo 1 minuto
+
+                    calculateCost@CalculatorPort( { .minutes = minutes, .batteryLevel = batt } )( costResponse );
+                    costMsg = " Costo: " + costResponse.totalCost + " EUR"
+                };
+
                 response.success = true;
-                response.message = "Noleggio terminato. Bat: " + batt + "%"
+                response.message = "Noleggio terminato. Bat: " + batt + "%." + costMsg
             } else {
                 println@Console("[GATEWAY] Errore stopTracking: vehicleId mancante!")();
                 response.success = false;
@@ -80,9 +122,10 @@ service FleetGateway {
             }
         } ]
 
-        // Aggrega dati da Tracking e Battery per fornire stato completo
+        // Ottieni stato veicolo
         [ getStatus( request )( response ) {
             if ( is_defined( request.vehicleId ) ) {
+                // Chiamate SOAP
                 getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
                 getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
 
@@ -92,7 +135,6 @@ service FleetGateway {
                 response.longitude = info.location.longitude;
                 response.batteryLevel = batt
             } else {
-                // Risposta di default in caso di errore
                 println@Console("[GATEWAY] Errore getStatus: vehicleId mancante!")();
                 response.vehicleId = "UNKNOWN";
                 response.status = "ERROR_MISSING_ID";
@@ -100,7 +142,7 @@ service FleetGateway {
             }
         } ]
 
-        // Logica semplice di prenotazione
+        // Operazioni standard (Mantenute da DevMatte)
         [ bookVehicle( request )( response ) {
             if ( is_defined( request.vehicleId ) ) {
                 println@Console("[GATEWAY] Richiesta Prenotazione: " + request.vehicleId)();
@@ -113,7 +155,6 @@ service FleetGateway {
             }
         } ]
 
-        // Registrazione utente in memoria (non persistente al riavvio del servizio)
         [ registerUser( request )( response ) {
             if ( is_defined( request.username ) && is_defined( request.password ) ) {
                 if ( is_defined( global.users.(request.username) ) ) {
@@ -122,7 +163,6 @@ service FleetGateway {
                 } else {
                     global.users.(request.username) = request.password;
                     println@Console("[GATEWAY] Nuovo utente registrato: " + request.username)();
-                    
                     response.success = true;
                     response.message = "Registrazione avvenuta con successo!"
                 }
@@ -132,14 +172,11 @@ service FleetGateway {
             }
         } ]
 
-        // Proxy verso Tracking per ottenere la mappa completa dei veicoli
         [ getMap( request )( response ) {
             getVehicleList@Tracking()( trackingData );
-            // Proiezione dei dati della struttura trackingData nella risposta
             response.vehicles -> trackingData.vehicles
         } ]
 
-        // Gestione richieste OPTIONS per CORS (necessario per browser)
         [ handleOptions( request )( response ) {
             nullProcess 
         } ]

@@ -1,7 +1,7 @@
 type StartTrackingRequest {
     vehicleId: string
     userId: string
-    time: int // timestamp in millisecondi
+    time: long // timestamp in millisecondi
 }
 
 type StartTrackingResponse {
@@ -12,8 +12,8 @@ type StartTrackingResponse {
 type StopTrackingRequest {
     vehicleId: string
     userId: string
-    time: int 
-    battery: int 
+    time: long
+    // battery: int 
 }
 
 type StopTrackingResponse {

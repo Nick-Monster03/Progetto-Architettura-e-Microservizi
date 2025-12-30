@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<wsdl:definitions targetNamespace="http://acmemobility.org/station.wsdl" xmlns:xsd1="http://acmemobility.org/station.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://acmemobility.org/station.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+<wsdl:definitions targetNamespace="http://acme.com/station.wsdl" xmlns:xsd1="http://acme.com/station.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://acme.com/station.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
   <wsdl:types>
-    <xs:schema targetNamespace="http://acmemobility.org/station.xsd" xmlns:sch="http://acmemobility.org/station.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="unlock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="unlockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+    <xs:schema targetNamespace="http://acme.com/station.xsd" xmlns:sch="http://acme.com/station.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="unlock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="unlockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="StationFaultType"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="reserve"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="reserveResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element></xs:schema>
   </wsdl:types>
-  <wsdl:message name="UnlockResponse">
-    <wsdl:part name="body" element="xsd1:unlockResponse">
-    </wsdl:part>
-  </wsdl:message>
   <wsdl:message name="UnlockRequest">
     <wsdl:part name="body" element="xsd1:unlock">
     </wsdl:part>
@@ -15,8 +11,24 @@
     <wsdl:part name="body" element="xsd1:lock">
     </wsdl:part>
   </wsdl:message>
+  <wsdl:message name="UnlockResponse">
+    <wsdl:part name="body" element="xsd1:unlockResponse">
+    </wsdl:part>
+  </wsdl:message>
   <wsdl:message name="LockResponse">
     <wsdl:part name="body" element="xsd1:lockResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="ReserveRequest">
+    <wsdl:part name="body" element="xsd1:reserve">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="StationFaultType">
+    <wsdl:part name="body" element="xsd1:StationFaultType">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="ReserveResponse">
+    <wsdl:part name="body" element="xsd1:reserveResponse">
     </wsdl:part>
   </wsdl:message>
   <wsdl:portType name="StationPort">
@@ -24,6 +36,14 @@
       <wsdl:input message="tns:UnlockRequest">
     </wsdl:input>
       <wsdl:output message="tns:UnlockResponse">
+    </wsdl:output>
+      <wsdl:fault name="StationHardwareFault" message="tns:StationFaultType">
+    </wsdl:fault>
+    </wsdl:operation>
+    <wsdl:operation name="reserve">
+      <wsdl:input message="tns:ReserveRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:ReserveResponse">
     </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="lock">
@@ -37,6 +57,18 @@
     <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
     <wsdl:operation name="unlock">
       <soap:operation soapAction="unlock" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="StationHardwareFault">
+        <soap:fault name="StationHardwareFault" use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+    <wsdl:operation name="reserve">
+      <soap:operation soapAction="reserve" style="document"/>
       <wsdl:input>
         <soap:body use="literal"/>
       </wsdl:input>

@@ -4,8 +4,8 @@ service CostCalculator {
     execution: concurrent
     
     inputPort CalculatorPort {
-        Location: "local://CostCalculator" 
-        Protocol: sodep
+        Location: "socket://localhost:8089" 
+        Protocol: soap
         Interfaces: CostCalculatorInterface
     }
 
@@ -15,9 +15,8 @@ service CostCalculator {
             ratePerMinute = 0.25;
             baseCost = request.minutes * ratePerMinute;
             
-            // Se la batteria è sotto il 15%, applica penale
             if ( request.batteryLevel < 15 ) {
-                penalty = baseCost * 0.10; // 10% penale
+                penalty = baseCost * 0.10; 
                 response.totalCost = baseCost + penalty;
                 response.message = "Applicata penale del 10% (Batteria scarica)"
             } else {

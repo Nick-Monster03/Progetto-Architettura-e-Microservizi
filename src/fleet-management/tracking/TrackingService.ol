@@ -5,15 +5,22 @@ service TrackingService {
     execution: concurrent
 
     inputPort TrackingSocket {
+        // Usa 0.0.0.0 per Docker (fix DevMatte)
         Location: "socket://0.0.0.0:8084"
-        Protocol: sodep
+        
+        // Usa SOAP per specifica SOA (fix develope/Prof)
+        Protocol: soap {
+            .wsdl = "./TrackingService.wsdl";
+            .wsdl.port = "TrackingServicePort";
+            .dropRootValue = true
+        }
         Interfaces: TrackingInterface
     }
 
     init {
-        // Inizializza un veicolo di test
-        global.vehicles.("v-test").lat = 41.1171;
-        global.vehicles.("v-test").lon = 16.8719;
+        // Inizializza un veicolo di test (Roma)
+        global.vehicles.("v-test").lat = 41.9028;
+        global.vehicles.("v-test").lon = 12.4964;
         global.vehicles.("v-test").status = "AVAILABLE"
     }
 
@@ -33,11 +40,18 @@ service TrackingService {
 
         // Recupera info singolo veicolo. Se non esiste, lo inizializza di default
         [ getInfo( request )( response ) {
-            if ( !is_defined(global.vehicles.(request.vehicleId)) ) {
-                 global.vehicles.(request.vehicleId).lat = 41.1171;
-                 global.vehicles.(request.vehicleId).lon = 16.8719;
+            // Logica "develope": controlli granulari e coordinate su Roma
+            if ( !is_defined(global.vehicles.(request.vehicleId).lat) ) {
+                 // Coordinate di default (Roma) se non sono ancora settate
+                 global.vehicles.(request.vehicleId).lat = 41.9028;
+                 global.vehicles.(request.vehicleId).lon = 12.4964
+            };
+            
+            // Se per caso manca lo stato (es. creato solo con updateLocation), mettiamo AVAILABLE
+            if ( !is_defined(global.vehicles.(request.vehicleId).status) ) {
                  global.vehicles.(request.vehicleId).status = "AVAILABLE"
             };
+
             response.location.latitude = global.vehicles.(request.vehicleId).lat;
             response.location.longitude = global.vehicles.(request.vehicleId).lon;
             response.status = global.vehicles.(request.vehicleId).status
