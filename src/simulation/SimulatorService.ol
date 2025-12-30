@@ -11,13 +11,13 @@ service SimulatorService {
     
     outputPort Tracking {
         Location: "socket://localhost:8084" 
-        Protocol: sodep
+        Protocol: soap
         Interfaces: TrackingInterface
     }
 
     outputPort Battery {
         Location: "socket://localhost:8085" 
-        Protocol: sodep
+        Protocol: soap
         Interfaces: BatteryInterface
     }
 

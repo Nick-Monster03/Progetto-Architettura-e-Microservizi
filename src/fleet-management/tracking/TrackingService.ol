@@ -7,7 +7,7 @@ service TrackingService {
    
     inputPort TrackingSocket {
         Location: "socket://localhost:8084"
-        Protocol: sodep
+        Protocol: soap
         Interfaces: TrackingInterface
     }
 
@@ -30,15 +30,20 @@ service TrackingService {
         } ]
 
         [ getInfo( request )( response ) {
-            if ( !is_defined(global.vehicles.(request.vehicleId)) ) {
-                 // Crea default se non esiste
+            if ( !is_defined(global.vehicles.(request.vehicleId).lat) ) {
+                 // Coordinate di default (Roma) se non sono ancora settate
                  global.vehicles.(request.vehicleId).lat = 41.9028;
-                 global.vehicles.(request.vehicleId).lon = 12.4964;
+                 global.vehicles.(request.vehicleId).lon = 12.4964
+            };
+            
+            // Se per caso manca lo stato (es. creato solo con updateLocation), mettiamo AVAILABLE
+            if ( !is_defined(global.vehicles.(request.vehicleId).status) ) {
                  global.vehicles.(request.vehicleId).status = "AVAILABLE"
             };
             response.location.latitude = global.vehicles.(request.vehicleId).lat;
             response.location.longitude = global.vehicles.(request.vehicleId).lon;
             response.status = global.vehicles.(request.vehicleId).status
+            //println@Console("[TRACKING] Stato " + request.vehicleId + " -> " + response.status)()
         } ]
 
         [ getRentedVehicles( request )( response ) {

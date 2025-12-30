@@ -1,6 +1,8 @@
 include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
+include "../../service-utils/CostCalculatorInterface.iol"
+from time import Time
 
 
 include "console.iol"
@@ -21,14 +23,20 @@ service FleetGateway {
 
     outputPort Tracking {
         Location: "socket://localhost:8084" 
-        Protocol: sodep
+        Protocol: soap
         Interfaces: TrackingInterface
     }
 
     outputPort Battery {
         Location: "socket://localhost:8085" 
-        Protocol: sodep
+        Protocol: soap
         Interfaces: BatteryInterface
+    }
+
+    outputPort CalculatorPort {
+        Location: "socket://localhost:8089" 
+        Protocol: soap
+        Interfaces: CostCalculatorInterface
     }
 
 
@@ -39,7 +47,9 @@ service FleetGateway {
             setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RENTED" } )();
             
             response.success = true;
-            response.message = "Monitoraggio avviato"
+            response.message = "Monitoraggio avviato";
+            vehicleId = request.vehicleId;
+            global.starting_times.vehicleId = request.time
         } ]
 
         [ stopTracking( request )( response ) {
@@ -50,8 +60,15 @@ service FleetGateway {
             getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
             getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
 
+            battery = batt;
+            time = request.time; // timestamp in millisecondi del tempo in cui il tracciamento è stato avviato
+            vehicleId = request.vehicleId;
+            start_time = global.starting_times.vehicleId;
+
+            calculateCost@CalculatorPort( { .minutes = (time - start_time) / 60000, .batteryLevel = batt } )( cost );
+
             response.success = true;
-            response.message = "Noleggio terminato. Bat: " + batt + "%"
+            response.message = "Noleggio terminato. Bat: " + batt + "%, \n Costo: " + cost.totalCost
         } ]
 
         [ getStatus( request )( response ) {

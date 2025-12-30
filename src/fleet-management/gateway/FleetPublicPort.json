@@ -178,7 +178,8 @@
                     "type": "string"
                 },
                 "time": {
-                    "type": "integer"
+                    "format": "int64",
+                    "type": "number"
                 },
                 "userId": {
                     "type": "string"
@@ -192,10 +193,8 @@
                     "type": "string"
                 },
                 "time": {
-                    "type": "integer"
-                },
-                "battery": {
-                    "type": "integer"
+                    "format": "int64",
+                    "type": "number"
                 },
                 "userId": {
                     "type": "string"
