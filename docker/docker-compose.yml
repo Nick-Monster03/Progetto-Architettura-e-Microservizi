@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Servizio Bancario (Jolie)
   bank-service:
     build:
       context: ../src/bank-jolie
@@ -10,15 +11,17 @@ services:
     networks:
       - acme-net
 
+  # Tracking Microservice (Jolie - Internal)
   tracking-service:
     build:
       context: ../src/fleet-management/tracking
     container_name: tracking-service
     expose:
-      - "8084"
+      - "8084" # Esposto solo nella rete interna
     networks:
       - acme-net
 
+  # Battery Microservice (Jolie - Internal)
   battery-service:
     build:
       context: ../src/fleet-management/battery
@@ -27,7 +30,8 @@ services:
       - "8085"
     networks:
       - acme-net
-  
+
+  # Calculator Service (Jolie - Internal)
   calculator-service:
     build:
       context: ../src/service-utils
@@ -37,9 +41,11 @@ services:
     networks:
       - acme-net
 
+  # Fleet Gateway (Jolie - REST API + SOAP Client)
   fleet-gateway:
     build:
-      context: ../src/fleet-management/gateway
+      context: ../src/fleet-management
+      dockerfile: gateway/Dockerfile
     container_name: fleet-gateway
     ports:
       - "8082:8082"
@@ -54,6 +60,7 @@ services:
     networks:
       - acme-net
 
+  # Station Service (Jolie - SOAP)
   station-service:
     build:
       context: ../src/stations
@@ -63,6 +70,7 @@ services:
     networks:
       - acme-net
 
+  # Simulator Service 
   simulator:
     build:
       context: ../src/simulation
@@ -76,6 +84,7 @@ services:
     networks:
       - acme-net
 
+  # Camunda BPMS
   camunda:
     image: camunda/camunda-bpm-platform:run-latest
     container_name: acme-camunda
@@ -83,6 +92,16 @@ services:
       - "8080:8080"
     environment:
       - CAMUNDA_bpm_run_cors_enabled=true
+    networks:
+      - acme-net
+
+  # Client Frontend 
+  client-app:
+    build:
+      context: ../src/client-app
+    container_name: client-app
+    ports:
+      - "3000:3000"
     networks:
       - acme-net
 

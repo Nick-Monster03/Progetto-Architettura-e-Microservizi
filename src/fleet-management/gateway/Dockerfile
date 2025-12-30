@@ -1,5 +1,8 @@
 FROM jolielang/jolie:latest
-WORKDIR /app
-COPY . .
 EXPOSE 8082
+
+COPY . /app
+
+WORKDIR /app/gateway
+
 CMD ["jolie", "FleetGateway.ol"]

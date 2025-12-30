@@ -1,35 +1,39 @@
-type Location {
-    latitude: double
-    longitude: double
+type LocationType {
+    .latitude: double
+    .longitude: double
 }
 
+type VehicleInfo {
+    .vehicleId: string
+    .location: LocationType
+    .status: string // AVAILABLE, RENTED, RESERVED
+}
+
+type VehicleList {
+    .vehicles*: VehicleInfo
+}
+
+
 type UpdateLocationRequest {
-    vehicleId: string
-    location: Location
+    .vehicleId: string
+    .location: LocationType
 }
 
 type SetStatusRequest {
-    vehicleId: string
-    status: string
+    .vehicleId: string
+    .status: string
 }
 
 type GetInfoRequest {
-    vehicleId: string
+    .vehicleId: string
 }
 
-type GetInfoResponse {
-    location: Location
-    status: string
-}
-
-type GetRentedResponse {
-    vehicleIds*: string
-}
 
 interface TrackingInterface {
     RequestResponse:
-        updateLocation(UpdateLocationRequest)(void),
-        setStatus(SetStatusRequest)(void),
-        getInfo(GetInfoRequest)(GetInfoResponse),
-        getRentedVehicles(void)(GetRentedResponse)
+        setStatus( SetStatusRequest )( void ),
+        getInfo( GetInfoRequest )( VehicleInfo ),
+        updateLocation( UpdateLocationRequest )( void ),
+        
+        getVehicleList( void )( VehicleList )
 }

@@ -3,14 +3,18 @@ include "console.iol"
 
 service StationService {
 
+    // Esecuzione concorrente per servire più client simultaneamente
     execution: concurrent
 
+    // Definizione del Correlation Set per la sessione
+    // Collega il SID generato nella risposta di 'unlock' al SID richiesto in 'lock'
     cset {
         sid: UnlockResponse.sid LockRequest.sid
     }
 
     inputPort StationPort {
-        Location: "socket://localhost:8083" 
+        // Usa 0.0.0.0 per Docker (fix DevMatte)
+        Location: "socket://0.0.0.0:8083"
         Protocol: soap {
             .wsdl = "./StationService.wsdl";
             .wsdl.port = "StationPortServicePort";
@@ -21,6 +25,8 @@ service StationService {
 
     init {
         println@Console("--- STATION SERVICE AVVIATO (Porta 8083) ---")();
+        
+        // Logica di inizializzazione da 'develope' (più ricca per i test)
         
         // Veicolo 1: Libero a Termini
         global.station_vehicles.("v1").locked = true
@@ -36,11 +42,12 @@ service StationService {
         global.station_vehicles.("v3").locked = true
         global.station_vehicles.("v3").station = "Eur-Fermi"
         global.station_vehicles.("v3").reserved = true
-        global.station_vehicles.("v3").reservedBy = "user_b" // Prenotato da un altro
+        global.station_vehicles.("v3").reservedBy = "user_b" 
     }
 
     main {
 
+        // Operazione 'reserve' (presente solo in develope, fondamentale per la traccia)
         [ reserve( request )( response ) {
             id = request.vehicleId;
             user = request.userId;
@@ -64,14 +71,15 @@ service StationService {
             }
         } ]
 
+        // Operazione 'unlock' con logica di business avanzata (develope)
         [ unlock( request )( response ) {
             id = request.vehicleId;
             user = request.userId;
             println@Console( "[UNLOCK] Tentativo sblocco " + id + " utente " + user )();
             
             synchronized( lock ) {
+                // Fallback: crea il veicolo se non esiste (utile per test al volo)
                 if ( !is_defined( global.station_vehicles.(id) ) ) {
-                     // Fallback per test: creiamo veicolo al volo se non esiste
                      global.station_vehicles.(id).locked = true;
                      global.station_vehicles.(id).reserved = false;
                      println@Console( "WARNING: Veicolo creato al volo per test." )()
@@ -79,7 +87,7 @@ service StationService {
 
                 canUnlock = false;
                 
-                //Veicolo Prenotato
+                // CASO A: Veicolo Prenotato
                 if ( global.station_vehicles.(id).reserved ) {
                     if ( global.station_vehicles.(id).reservedBy == user ) {
                         println@Console( "-> OK: Utente corrisponde alla prenotazione." )();
@@ -93,7 +101,7 @@ service StationService {
                         response.message = "Veicolo riservato ad un altro utente."
                     }
                 } 
-                //Noleggio Immediato
+                // CASO B: Noleggio Immediato (Nessuna prenotazione)
                 else {
                     if ( global.station_vehicles.(id).locked ) {
                         println@Console( "-> OK: Noleggio immediato." )();
@@ -115,12 +123,13 @@ service StationService {
                     response.message = "Veicolo sbloccato. Buon viaggio!"
                 } else {
                     response.success = false;
-                    // message già settato sopra
                     response.sid = ""
+                    // message già settato nei rami else sopra
                 }
             }
         } ]
 
+        // Operazione 'lock'
         [ lock( request )( response ) {
             id = request.vehicleId;
             station = request.stationId;

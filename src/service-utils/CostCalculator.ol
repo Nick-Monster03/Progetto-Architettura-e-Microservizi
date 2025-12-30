@@ -10,10 +10,10 @@ service CostCalculator {
     }
 
     main {
+        // Calcola costo basato sui minuti con eventuale penale batteria
         calculateCost( request )( response ) {
             ratePerMinute = 0.25;
             baseCost = request.minutes * ratePerMinute;
-            
             
             if ( request.batteryLevel < 15 ) {
                 penalty = baseCost * 0.10; 

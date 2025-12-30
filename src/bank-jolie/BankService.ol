@@ -7,17 +7,26 @@ service BankService {
     execution: concurrent
 
     inputPort BankPort {
-        location: "socket://localhost:8008"
-        interfaces: BankInterface 
-        Protocol: soap 
+        location: "socket://0.0.0.0:8008"
+        
+        protocol: soap {
+            .wsdl = "./BankService.wsdl";
+            .wsdl.port = "BankPortServicePort";
+            .dropRootValue = true
+        }
+        interfaces: BankInterface
     }
 
+    // Correlation Set: lega il paymentToken generato in 'preAuthorize' 
+    // a quello ricevuto in 'commitPayment'
     cset {
-        paymentToken: PaymentRequest.paymentToken 
+        paymentToken: PaymentRequest.paymentToken
     }
 
+    // --- LOGICA DI BUSINESS ---
 
     init {
+        // Inizializzazione Database Utenti fittizio
         global.users[0].name = "Mario";
         global.users[0].balance = 1000.0;
         global.users[0].state = "active";
@@ -35,11 +44,10 @@ service BankService {
         global.users[3].state = "suspended";
         
         global.CAUZIONE_STD = 10.0
-            
     }
 
     main {
-      
+        // Fase 1: Pre-autorizzazione (apre la sessione)
         preAuthorize( request )( response ) {
             client = request.clientName;
             
@@ -47,52 +55,54 @@ service BankService {
                 println@Console("FAIL: Non ci sono abbastanza fondi: " + client)()
             );
 
-		    install( AccountSuspended => 
+            install( AccountSuspended => 
                 println@Console("FAIL: Utente sospeso: " + client)()
             );    
-		    
-
+        
             synchronized( balanceLock ) {
+                // Ricerca utente
+                userIndex = -1; // Default not found
                 for( i=0, i<#global.users, i++ ) {
                     if ( global.users[i].name == client ) {
                         userIndex = i
                     }
                 };
-                if ( global.users[userIndex].state == "suspended" ) {
+                
+                // Se utente non trovato o sospeso
+                if ( userIndex == -1 || global.users[userIndex].state == "suspended" ) {
                      with( error ) { 
-                        .message = "Account bloccato per insolvenza precedente." 
+                        .message = "Account inesistente o bloccato." 
                      };
                      throw( AccountSuspended, error )
                 };
+                
                 currentBalance = global.users[userIndex].balance;
                 
                 if ( currentBalance < global.CAUZIONE_STD ) {
-                    //println@Console( "DEBUG: Saldo attuale " + currentBalance + " insufficiente per cauzione." )();
                     with( error ) { .message = "Fondi insufficienti. Saldo: " + currentBalance};
                     throw( InsufficientFunds, error )
                 } else {
+                    // Blocco cauzione
                     global.users[userIndex].balance = currentBalance - global.CAUZIONE_STD
-                    //println@Console( "DEBUG: Blocco " + global.CAUZIONE_STD + " EUR eseguito. Nuovo saldo: " + global.users[userIndex].balance )()
                 }
             };
 
+            // Setup Sessione
             sessionUserIndex = userIndex;
             amountBlocked = global.CAUZIONE_STD; 
-            sessionUserName = client; // Solo per i log
+            sessionUserName = client; 
 
             response.paymentToken = new;
             csets.paymentToken = response.paymentToken; 
 
             response.success = true;
             response.message = "Pre-auth OK"
-
-            //println@Console( "Token generato: " + response.paymentToken )()
         };
 
-        
+        // Fase 2: Conferma Pagamento
         [ commitPayment( request )( response ) {
             undef(response);
-            //println@Console( "--- [RESUME SESSION] Pagamento ricevuto per " + sessionUserName )();
+            
             install( PaymentRefused => 
                 println@Console( "FAIL: Pagamento rifiutato per " + sessionUserName + ": " + PaymentRefused.message )()
             );
@@ -101,36 +111,37 @@ service BankService {
                 current = global.users[sessionUserIndex].balance;
 
                 if ( request.amount <= global.CAUZIONE_STD ) {
+                    // Rimborso parziale
                     diff = amountBlocked - request.amount;
                     global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance + diff;
                     
                     response.success = true;
                     response.message = "Pagamento OK ("+request.amount+"). Rimborsati: " + diff
                 } else {
+                    // Addebito extra
                     extra = request.amount - global.CAUZIONE_STD;
-                    // println@Console( "DEBUG: " + request.amount )();
-                    // println@Console( "DEBUG: " + extra )();
-                    if ( current < extra ) { //se un utente non ha abbastanza soldi per pagare l'extra viene sopseso dal servizio
-                        global.users[sessionUserIndex].state = "suspended"
+                    
+                    if ( current < extra ) { 
+                        global.users[sessionUserIndex].state = "suspended";
                         with( error ) { 
-                            .message = "Pagamento Rifiutato. Saldo attuale (" + current + ") insufficiente per l'extra di " + extra 
+                            .message = "Pagamento Rifiutato. Saldo insufficiente per extra: " + extra 
                         };
                         println@Console( "FAIL: " + error.message )();
                         throw( PaymentRefused, error )
-                        //println@Console( "DEBUG WARNING: Utente va in rosso per pagare l'extra!" )()
                     };
+                    
                     global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance - extra;
                     
                     response.success = true;
                     response.message = "Pagamento OK ("+request.amount+"). Addebito extra: " + extra
-                    //println@Console( "DEBUG: Addebito extra di " + extra + ". Nuovo saldo: " + global.users[sessionUserIndex].balance )()
                 }
             };
-            //println@Console( "DEBUG: Generazione TX ID per token " + request.paymentToken )();
+
             response.txId = "TX-" + request.paymentToken;
             println@Console( response.message )()
         } ]
 
+        // Fase 3: Annullamento (es. errore stazione)
         [ cancelAuth( request ) ]{
             println@Console( "--- Annullamento per " + sessionUserName )();
             

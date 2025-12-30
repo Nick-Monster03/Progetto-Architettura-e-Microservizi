@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ACMEMobility App</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background: #2ecc71;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        #map {
+            flex-grow: 1;
+            z-index: 1;
+        }
+
+        #controls {
+            padding: 15px;
+            background: white;
+            border-top: 2px solid #ddd;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2c3e50;
+        }
+
+        button.rent {
+            background: #e67e22;
+        }
+
+        button.rent:hover {
+            background: #d35400;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="login-panel">
+        <h3>🔐 Accesso Utente</h3>
+        <input type="text" id="username" placeholder="Nome Utente">
+        <input type="password" id="password" placeholder="Password">
+        <br><br>
+        <button onclick="app.login()">Entra</button>
+        <button style="background:#8e44ad;" onclick="app.showRegister()">Crea Account</button>
+    </div>
+
+        <div id="register-panel" class="hidden" style="padding:15px; border-top:1px solid #ccc; margin-top:10px;">
+            <h3>📝 Nuova Registrazione</h3>
+            <input type="text" id="reg-username" placeholder="Scegli Nome Utente">
+            <input type="password" id="reg-password" placeholder="Scegli Password">
+            <br><br>
+            <button style="background:#27ae60;" onclick="app.register()">Conferma Registrazione</button>
+            <button style="background:#95a5a6;" onclick="app.hideRegister()">Annulla</button>
+        </div>
+    <div id="header">⚡ ACMEMobility Client</div>
+
+    <div id="map"></div>
+
+    <div id="controls">
+        <div id="login-panel">
+            <input type="text" id="username" placeholder="Tuo Nome Utente" value="MarioRossi">
+            <button onclick="app.login()">Entra</button>
+        </div>
+
+        <div id="action-panel" class="hidden">
+            <span id="user-display" style="font-weight:bold; margin-right:10px;"></span>
+            <button onclick="app.refreshMap()">🔄 Aggiorna Mappa</button>
+            <button class="rent" onclick="app.scanQR()">📸 Scan QR Noleggio</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

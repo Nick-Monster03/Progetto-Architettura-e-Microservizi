@@ -3,12 +3,17 @@ include "console.iol"
 
 service BatteryService {
     execution: concurrent
-    
-    
 
     inputPort BatterySocket {
-        Location: "socket://localhost:8085"
-        Protocol: soap
+        // Usa 0.0.0.0 per essere raggiungibile dagli altri container (fix Docker)
+        Location: "socket://0.0.0.0:8085"
+        
+        // Usa SOAP come richiesto dalla traccia del progetto
+        Protocol: soap {
+            .wsdl = "./BatteryService.wsdl";
+            .wsdl.port = "BatteryServicePort";
+            .dropRootValue = true
+        }
         Interfaces: BatteryInterface
     }
     
