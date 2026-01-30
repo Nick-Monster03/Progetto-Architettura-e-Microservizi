@@ -8,13 +8,13 @@ service SimulatorService {
     
     // Porte per comunicare con i servizi di Tracking e Battery
     outputPort Tracking {
-        Location: "socket://localhost:8084" 
+        Location: "socket://tracking-service:8084" 
         Protocol: soap
         Interfaces: TrackingInterface
     }
 
     outputPort Battery {
-        Location: "socket://localhost:8085" 
+        Location: "socket://battery-service:8085" 
         Protocol: soap
         Interfaces: BatteryInterface
     }

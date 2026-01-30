@@ -20,10 +20,9 @@ service BankService {
     // Correlation Set: lega il paymentToken generato in 'preAuthorize' 
     // a quello ricevuto in 'commitPayment'
     cset {
-        paymentToken: PaymentRequest.paymentToken
+        paymentToken: PaymentRequest.paymentToken CancelAuthRequest.token
     }
 
-    // --- LOGICA DI BUSINESS ---
 
     init {
         // Inizializzazione Database Utenti fittizio

@@ -1,7 +1,10 @@
 type StartTrackingRequest {
     vehicleId: string
     userId: string
+    clientName: string
     time: long // timestamp in millisecondi
+    isReservationPickup?: bool // true se deriva da una prenotazione esistente
+    cardNumber?: string
 }
 
 type StartTrackingResponse {
@@ -34,22 +37,24 @@ type GetStatusResponse {
     status: string 
 }
 
-type BookVehicleRequest: void {
+type BookVehicleRequest {
     .vehicleId: string
     .userId: string
+    .cardNumber: string
+    .clientName: string
 }
 
-type BookVehicleResponse: void {
+type BookVehicleResponse {
     .success: bool
     .message: string
 }
 
-type RegisterUserRequest: void {
+type RegisterUserRequest {
     .username: string
     .password: string 
 }
 
-type RegisterUserResponse: void {
+type RegisterUserResponse {
     .success: bool
     .message: string
 }

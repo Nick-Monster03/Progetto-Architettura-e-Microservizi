@@ -24,15 +24,19 @@ service BatteryService {
 
     main {
         [ updateBattery( request )( response ) {
-            global.batteries.(request.vehicleId) = request.level;
+            synchronized( batteryLock ) {
+                global.batteries.(request.vehicleId) = request.level
+            };
             println@Console("[BATTERY] Aggiornata " + request.vehicleId + ": " + request.level + "%")()
         } ]
 
         [ getBattery( request )( level ) {
-            if ( is_defined( global.batteries.(request.vehicleId) ) ) {
-                level = global.batteries.(request.vehicleId)
-            } else {
-                level = 100 
+            synchronized( batteryLock ) {
+                if ( is_defined( global.batteries.(request.vehicleId) ) ) {
+                    level = global.batteries.(request.vehicleId)
+                } else {
+                    level = 100 
+                }
             }
         } ]
     }

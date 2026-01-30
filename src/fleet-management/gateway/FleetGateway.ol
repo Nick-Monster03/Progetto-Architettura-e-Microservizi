@@ -2,6 +2,7 @@ include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
 include "../../service-utils/CostCalculatorInterface.iol"
+include "../../bank-jolie/BankInterface.iol"
 from time import Time
 from console import Console
 
@@ -56,6 +57,13 @@ service FleetGateway {
         Interfaces: CostCalculatorInterface
     }
 
+    // Bank Service (aggiunto per coreografia)
+    outputPort Bank {
+        Location: "socket://bank-service:8008"
+        Protocol: soap { .dropRootValue = true }
+        Interfaces: BankInterface
+    }
+
     embed Console as Console
 
     main {
@@ -66,18 +74,66 @@ service FleetGateway {
             if ( is_defined( request.vehicleId ) ) {
                 println@Console("[GATEWAY] Start Tracking: " + request.vehicleId)();
                 
-                // Logica SOA
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RENTED" } )();
-                
-                // Salvataggio tempo inizio (develope)
-                // Se il client non manda il tempo, usiamo quello attuale (opzionale)
-                if ( !is_defined(request.time) ) {
-                    request.time = new
+                // Logica differenziata: Noleggio Immediato vs Pickup da Prenotazione
+                shouldAuthorize = true;
+                if ( is_defined(request.isReservationPickup) && request.isReservationPickup == true ) {
+                    // Caso B1: Ritiro Veicolo (Pickup) - La pre-auth è già stata fatta in bookVehicle
+                    println@Console("[GATEWAY] Pickup da prenotazione: salto pre-auth.")();
+                    
+                    // Verifica se esiste un token (sicurezza)
+                    synchronized( gatewayLock ) {
+                        if ( !is_defined(global.payment_tokens.(request.vehicleId)) ) {
+                            // Anomalia: Prenotazione dichiarata ma nessun token trovato
+                            shouldAuthorize = true; // Fallback: rifacciamo l'auth per sicurezza
+                            println@Console("[GATEWAY] WARN: Token non trovato per pickup. Eseguo nuova auth.")()
+                        } else {
+                            shouldAuthorize = false;
+                            response.success = true // Procediamo diretti
+                        }
+                    }
                 };
-                global.starting_times.(request.vehicleId) = request.time;
 
-                response.success = true;
-                response.message = "Monitoraggio avviato"
+                if ( shouldAuthorize ) {
+                    // Caso A: Noleggio Immediato - Serve Pre-autorizzazione
+                    scope( bankScope ) {
+                        install( InsufficientFunds => 
+                            response.success = false;
+                            response.message = "Fondi insufficienti per il noleggio.";
+                            println@Console("[GATEWAY] Pre-auth fallita: Fondi insufficienti")()
+                        );
+                        install( AccountSuspended =>
+                            response.success = false;
+                            response.message = "Account sospeso.";
+                            println@Console("[GATEWAY] Pre-auth fallita: Account sospeso")()
+                        );
+
+                        preAuthorize@Bank( { 
+                            .clientName = request.clientName, 
+                            .cardNumber = request.cardNumber 
+                        } )( bankResponse );
+
+                        // Salviamo il token di pagamento per la chiusura
+                        synchronized( gatewayLock ) {
+                            global.payment_tokens.(request.vehicleId) = bankResponse.paymentToken
+                        }
+                    }
+                };
+
+                if ( !is_defined(response.success) || response.success == true ) { // Se non fallito sopra
+                    // Logica SOA
+                    setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RENTED" } )();
+                    
+                    // Salvataggio tempo inizio (develope)
+                    if ( !is_defined(request.time) ) {
+                        request.time = new
+                    };
+                    synchronized( gatewayLock ) {
+                        global.starting_times.(request.vehicleId) = request.time
+                    };
+
+                    response.success = true;
+                    response.message = "Monitoraggio avviato."
+                }
             } else {
                 println@Console("[GATEWAY] Errore startTracking: vehicleId mancante!")();
                 response.success = false;
@@ -99,22 +155,56 @@ service FleetGateway {
                 getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
 
                 // 3. Calcolo Costo (Logica develope)
+                totalCost = 0.0;
                 costMsg = "";
-                if ( is_defined( global.starting_times.(request.vehicleId) ) ) {
-                    start_time = global.starting_times.(request.vehicleId);
-                    // Se request.time manca, usa timestamp attuale fittizio o ricevuto
-                    if ( !is_defined(request.time) ) request.time = start_time + 600000; // fallback 10 min
+                
+                synchronized( gatewayLock ) {
+                    if ( is_defined( global.starting_times.(request.vehicleId) ) ) {
+                        start_time = global.starting_times.(request.vehicleId);
+                        // Se request.time manca, usa timestamp attuale fittizio o ricevuto
+                        if ( !is_defined(request.time) ) request.time = start_time + 600000; // fallback 10 min
 
-                    // Calcolo minuti (ms / 60000)
-                    minutes = (request.time - start_time) / 60000;
-                    if ( minutes < 1 ) minutes = 1; // Minimo 1 minuto
+                        // Calcolo minuti (ms / 60000)
+                        minutes = (request.time - start_time) / 60000;
+                        if ( minutes < 1 ) minutes = 1; // Minimo 1 minuto
 
-                    calculateCost@CalculatorPort( { .minutes = minutes, .batteryLevel = batt } )( costResponse );
-                    costMsg = " Costo: " + costResponse.totalCost + " EUR"
+                        calculateCost@CalculatorPort( { .minutes = minutes, .batteryLevel = batt } )( costResponse );
+                        totalCost = costResponse.totalCost;
+                        costMsg = " Costo: " + totalCost + " EUR"
+                    }
                 };
 
-                response.success = true;
-                response.message = "Noleggio terminato. Bat: " + batt + "%." + costMsg
+                // 4. Pagamento Finale (Coreografia)
+                scope( paymentScope ) {
+                    install( PaymentRefused => 
+                        response.success = false;
+                        response.message = "Noleggio chiuso ma Pagamento Rifiutato: " + PaymentRefused.message;
+                        println@Console("[GATEWAY] Pagamento fallito: " + PaymentRefused.message)()
+                    );
+
+                    // Recupera token salvato
+                    token = "";
+                    synchronized( gatewayLock ) {
+                        if ( is_defined( global.payment_tokens.(request.vehicleId) ) ) {
+                            token = global.payment_tokens.(request.vehicleId)
+                        }
+                    };
+
+                    if ( token != "" ) {
+                        commitPayment@Bank( { 
+                            .paymentToken = token, 
+                            .amount = totalCost 
+                        } )( payResponse );
+                        
+                        response.success = true;
+                        response.message = "Noleggio terminato. Bat: " + batt + "%." + costMsg + ". Transazione: " + payResponse.txId
+                    } else {
+                        // Fallback se non c'è token (es. riavvio server)
+                        response.success = true;
+                        response.message = "Noleggio terminato (No Payment Token found). Bat: " + batt + "%." + costMsg
+                    }
+                }
+
             } else {
                 println@Console("[GATEWAY] Errore stopTracking: vehicleId mancante!")();
                 response.success = false;
@@ -146,9 +236,36 @@ service FleetGateway {
         [ bookVehicle( request )( response ) {
             if ( is_defined( request.vehicleId ) ) {
                 println@Console("[GATEWAY] Richiesta Prenotazione: " + request.vehicleId)();
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RESERVED" } )();
-                response.success = true;
-                response.message = "Veicolo prenotato con successo per 30 minuti."
+                
+                // 1. Pre-autorizzazione Bancaria (Coreografia - Ramo 2)
+                scope( bankScope ) {
+                    install( InsufficientFunds => 
+                        response.success = false;
+                        response.message = "Prenotazione fallita: Fondi insufficienti.";
+                        println@Console("[GATEWAY] Prenotazione fallita: Fondi insufficienti")()
+                    );
+                    install( AccountSuspended =>
+                        response.success = false;
+                        response.message = "Prenotazione fallita: Account sospeso.";
+                        println@Console("[GATEWAY] Prenotazione fallita: Account sospeso")()
+                    );
+
+                    preAuthorize@Bank( { 
+                        .clientName = request.clientName,
+                        .cardNumber = request.cardNumber 
+                    } )( bankResponse );
+
+                    // Salviamo il token di pagamento per il futuro pickup
+                    synchronized( gatewayLock ) {
+                        global.payment_tokens.(request.vehicleId) = bankResponse.paymentToken
+                    }
+                };
+
+                if ( !is_defined(response.success) || response.success == true ) {
+                    setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RESERVED" } )();
+                    response.success = true;
+                    response.message = "Veicolo prenotato con successo. Cauzione bloccata."
+                }
             } else {
                 response.success = false;
                 response.message = "Errore: ID Veicolo mancante."
@@ -157,14 +274,16 @@ service FleetGateway {
 
         [ registerUser( request )( response ) {
             if ( is_defined( request.username ) && is_defined( request.password ) ) {
-                if ( is_defined( global.users.(request.username) ) ) {
-                    response.success = false;
-                    response.message = "Errore: L'utente " + request.username + " esiste già!"
-                } else {
-                    global.users.(request.username) = request.password;
-                    println@Console("[GATEWAY] Nuovo utente registrato: " + request.username)();
-                    response.success = true;
-                    response.message = "Registrazione avvenuta con successo!"
+                synchronized( gatewayLock ) {
+                    if ( is_defined( global.users.(request.username) ) ) {
+                        response.success = false;
+                        response.message = "Errore: L'utente " + request.username + " esiste già!"
+                    } else {
+                        global.users.(request.username) = request.password;
+                        println@Console("[GATEWAY] Nuovo utente registrato: " + request.username)();
+                        response.success = true;
+                        response.message = "Registrazione avvenuta con successo!"
+                    }
                 }
             } else {
                 response.success = false;

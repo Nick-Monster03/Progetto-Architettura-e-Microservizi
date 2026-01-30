@@ -1,0 +1,57 @@
+(P)_User ::=
+
+/* --- RAMO 1: NOLEGGIO IMMEDIATO --- */
+startRental_OUT@ACME ;
+(
+    /* Caso Banca KO */
+    rentalFailed@ACME
+    +
+    /* Caso Banca OK (Invisibile all'User) -> Si tenta sblocco */
+    (
+        /* Caso Stazione Guasta */
+        rentalFailed@ACME
+        +
+        /* Caso Stazione OK */
+        rentalStarted@ACME ;
+        
+        /* Il loop di monitoraggio è trasparente (1*), si va alla fine */
+        endRental_OUT@ACME ;
+        
+        /* Ricezione fattura o sollecito */
+        ( invoice@ACME + paymentSollecit@ACME )
+    )
+)
+
++
+
+/* --- RAMO 2: PRENOTAZIONE --- */
+reserve_OUT@ACME ;
+(
+    /* Caso Banca KO */
+    reservationFailed@ACME
+    +
+    /* Caso Banca OK */
+    reservationConfirmed@ACME ;
+    
+    /* SCELTA TRIPLA (Mixed Choice risolta lato User) */
+    (
+        /* B3: Cancellazione */
+        cancelReservation_OUT@ACME ; 
+        cancellationConfirmed@ACME
+        +
+        /* B2: Timeout (L'utente riceve passivamente la notifica) */
+        penaltyNotification@ACME
+        +
+        /* B1: Ritiro Veicolo */
+        confirmPickup_OUT@ACME ;
+        (
+            /* Stazione KO */
+            rentalFailed@ACME
+            +
+            /* Stazione OK - Flusso Noleggio Standard */
+            rentalStarted@ACME ;
+            endRental_OUT@ACME ;
+            ( invoice@ACME + paymentSollecit@ACME )
+        )
+    )
+) .
