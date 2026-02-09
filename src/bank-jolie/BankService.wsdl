@@ -1,58 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<wsdl:definitions targetNamespace="http://acmemobility.com/bank.wsdl" xmlns:xsd1="http://acmemobility.com/bank.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://acmemobility.com/bank.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+<wsdl:definitions targetNamespace="http://bank.acme.mobility.wsdl" xmlns:xsd1="http://bank.acme.mobility.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://bank.acme.mobility.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
   <wsdl:types>
-    <xs:schema targetNamespace="http://acmemobility.com/bank.xsd" xmlns:sch="http://acmemobility.com/bank.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="preAuthorize"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="clientName" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="cardNumber" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="preAuthorizeResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="paymentToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="AccountSuspended"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="InsufficientFunds"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPayment"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="paymentToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="amount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPaymentResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="txId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="PaymentRefused"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="cancelAuth"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="token" type="xs:string"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+    <xs:schema targetNamespace="http://bank.acme.mobility.xsd" xmlns:sch="http://bank.acme.mobility.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="preAuthorize"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="amount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="expiryTime" type="xs:long"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="cardNumber" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="preAuthorizeResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorCode" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="blockedAmount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPayment"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="duration" type="xs:int"/><xs:element maxOccurs="1" minOccurs="1" name="finalAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="penalty" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="kilometers" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="batteryLevel" type="xs:int"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPaymentResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="chargedAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorCode" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="receiptId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPenalty"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="penaltyAmount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPenaltyResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="chargedAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="receiptId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="cancelAuth"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="0" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="expired" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/></xs:sequence></xs:complexType></xs:element></xs:schema>
   </wsdl:types>
-  <wsdl:message name="PaymentRequest">
-    <wsdl:part name="body" element="xsd1:commitPayment">
+  <wsdl:message name="CommitPenaltyRequest">
+    <wsdl:part name="body" element="xsd1:commitPenalty">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="PreAuthResponse">
-    <wsdl:part name="body" element="xsd1:preAuthorizeResponse">
-    </wsdl:part>
-  </wsdl:message>
-  <wsdl:message name="PreAuthRequest">
+  <wsdl:message name="PreAuthorizeRequest">
     <wsdl:part name="body" element="xsd1:preAuthorize">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="AccountSuspended">
-    <wsdl:part name="body" element="xsd1:AccountSuspended">
+  <wsdl:message name="CommitPaymentRequest">
+    <wsdl:part name="body" element="xsd1:commitPayment">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="PreAuthorizeResponse">
+    <wsdl:part name="body" element="xsd1:preAuthorizeResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="CommitPaymentResponse">
+    <wsdl:part name="body" element="xsd1:commitPaymentResponse">
     </wsdl:part>
   </wsdl:message>
   <wsdl:message name="CancelAuthRequest">
     <wsdl:part name="body" element="xsd1:cancelAuth">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="PaymentResponse">
-    <wsdl:part name="body" element="xsd1:commitPaymentResponse">
-    </wsdl:part>
-  </wsdl:message>
-  <wsdl:message name="InsufficientFunds">
-    <wsdl:part name="body" element="xsd1:InsufficientFunds">
-    </wsdl:part>
-  </wsdl:message>
-  <wsdl:message name="PaymentRefused">
-    <wsdl:part name="body" element="xsd1:PaymentRefused">
+  <wsdl:message name="CommitPenaltyResponse">
+    <wsdl:part name="body" element="xsd1:commitPenaltyResponse">
     </wsdl:part>
   </wsdl:message>
   <wsdl:portType name="BankPort">
     <wsdl:operation name="preAuthorize">
-      <wsdl:input message="tns:PreAuthRequest">
+      <wsdl:input message="tns:PreAuthorizeRequest">
     </wsdl:input>
-      <wsdl:output message="tns:PreAuthResponse">
+      <wsdl:output message="tns:PreAuthorizeResponse">
     </wsdl:output>
-      <wsdl:fault name="AccountSuspended" message="tns:AccountSuspended">
-    </wsdl:fault>
-      <wsdl:fault name="InsufficientFunds" message="tns:InsufficientFunds">
-    </wsdl:fault>
     </wsdl:operation>
     <wsdl:operation name="commitPayment">
-      <wsdl:input message="tns:PaymentRequest">
+      <wsdl:input message="tns:CommitPaymentRequest">
     </wsdl:input>
-      <wsdl:output message="tns:PaymentResponse">
+      <wsdl:output message="tns:CommitPaymentResponse">
     </wsdl:output>
-      <wsdl:fault name="PaymentRefused" message="tns:PaymentRefused">
-    </wsdl:fault>
+    </wsdl:operation>
+    <wsdl:operation name="commitPenalty">
+      <wsdl:input message="tns:CommitPenaltyRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:CommitPenaltyResponse">
+    </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="cancelAuth">
       <wsdl:input message="tns:CancelAuthRequest">
@@ -69,12 +65,6 @@
       <wsdl:output>
         <soap:body use="literal"/>
       </wsdl:output>
-      <wsdl:fault name="AccountSuspended">
-        <soap:fault name="AccountSuspended" use="literal"/>
-      </wsdl:fault>
-      <wsdl:fault name="InsufficientFunds">
-        <soap:fault name="InsufficientFunds" use="literal"/>
-      </wsdl:fault>
     </wsdl:operation>
     <wsdl:operation name="commitPayment">
       <soap:operation soapAction="commitPayment" style="document"/>
@@ -84,9 +74,15 @@
       <wsdl:output>
         <soap:body use="literal"/>
       </wsdl:output>
-      <wsdl:fault name="PaymentRefused">
-        <soap:fault name="PaymentRefused" use="literal"/>
-      </wsdl:fault>
+    </wsdl:operation>
+    <wsdl:operation name="commitPenalty">
+      <soap:operation soapAction="commitPenalty" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="cancelAuth">
       <soap:operation soapAction="cancelAuth" style="document"/>
