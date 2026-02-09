@@ -5,10 +5,7 @@ service TrackingService {
     execution: concurrent
 
     inputPort TrackingSocket {
-        // Usa 0.0.0.0 per Docker (fix DevMatte)
         Location: "socket://0.0.0.0:8084"
-        
-        // Usa SOAP per specifica SOA (fix develope/Prof)
         Protocol: soap {
             .wsdl = "./TrackingService.wsdl";
             .wsdl.port = "TrackingServicePort";
@@ -18,67 +15,103 @@ service TrackingService {
     }
 
     init {
-        // Inizializza veicoli di test (Bari per coerenza col simulatore)
-        global.vehicles.("v-test").lat = 41.1171;
-        global.vehicles.("v-test").lon = 16.8719;
-        global.vehicles.("v-test").status = "AVAILABLE";
+        // Dati iniziali (Bari)
+        global.vehicles.("car1").lat = 41.1171;
+        global.vehicles.("car1").lon = 16.8719;
+        global.vehicles.("car1").status = "AVAILABLE";
+        global.vehicles.("car1").totalKm = 0.0; // Inizializzo contatore
 
-        global.vehicles.("v-01").lat = 41.1222;
-        global.vehicles.("v-01").lon = 16.8715;
-        global.vehicles.("v-01").status = "AVAILABLE";
+        global.vehicles.("car2").lat = 41.1222;
+        global.vehicles.("car2").lon = 16.8715;
+        global.vehicles.("car2").status = "AVAILABLE";
+        global.vehicles.("car2").totalKm = 0.0;
 
-        global.vehicles.("v-02").lat = 41.1250;
-        global.vehicles.("v-02").lon = 16.8800;
-        global.vehicles.("v-02").status = "AVAILABLE"
+        println@Console("Tracking Service avviato (SOAP port 8084)")()
     }
 
     main {
-        // Aggiorna le coordinate di un veicolo
-        [ updateLocation( request )( response ) {
+        [ updateLocation( request )() {
             synchronized( trackingLock ) {
-                global.vehicles.(request.vehicleId).lat = request.location.latitude;
-                global.vehicles.(request.vehicleId).lon = request.location.longitude
-            };
-            println@Console("[TRACKING] Update " + request.vehicleId)()
-        } ]
-
-        // Imposta lo stato (es. RENTED, AVAILABLE)
-        [ setStatus( request )( response ) {
-            synchronized( trackingLock ) {
-                global.vehicles.(request.vehicleId).status = request.status
-            };
-            println@Console("[TRACKING] Stato " + request.vehicleId + " -> " + request.status)()
-        } ]
-
-        // Recupera info singolo veicolo. Se non esiste, lo inizializza di default
-        [ getInfo( request )( response ) {
-            synchronized( trackingLock ) {
-                // Logica "develope": controlli granulari e coordinate su Bari (default)
-                if ( !is_defined(global.vehicles.(request.vehicleId).lat) ) {
-                    // Coordinate di default (Bari) se non sono ancora settate
-                    global.vehicles.(request.vehicleId).lat = 41.1171;
-                    global.vehicles.(request.vehicleId).lon = 16.8719
-                };
+                vid = request.vehicleId;
                 
-                // Se per caso manca lo stato (es. creato solo con updateLocation), mettiamo AVAILABLE
-                if ( !is_defined(global.vehicles.(request.vehicleId).status) ) {
-                    global.vehicles.(request.vehicleId).status = "AVAILABLE"
-                };
+                if ( is_defined( global.vehicles.(vid) ) ) {
+                    // 1. Recupero posizione precedente
+                    oldLat = global.vehicles.(vid).lat;
+                    oldLon = global.vehicles.(vid).lon;
+                    
+                    // 2. Aggiorno con nuova posizione
+                    println@Console("Ricevuto updateLocation per " + vid )();
+                    println@Console("Aggiornamento posizione per " + vid + ": (" + request.location.latitude + ", " + request.location.longitude + ")")();
+                    newLat = request.location.latitude;
+                    newLon = request.location.longitude;
+                    global.vehicles.(vid).lat = newLat;
+                    global.vehicles.(vid).lon = newLon;
 
-                response.location.latitude = global.vehicles.(request.vehicleId).lat;
-                response.location.longitude = global.vehicles.(request.vehicleId).lon;
-                response.status = global.vehicles.(request.vehicleId).status
+                    // 3. Calcolo Distanza (Euclidea approssimata x 111km per convertire gradi in km)
+                    // Delta Lat/Lon
+                    dLat = newLat - oldLat;
+                    dLon = newLon - oldLon;
+                    
+                    // Valore Assoluto Manuale (se negativo, moltiplico per -1)
+                    if ( dLat < 0.0 ) { dLat = dLat * -1.0 };
+                    if ( dLon < 0.0 ) { dLon = dLon * -1.0 };
+                    
+                    // Somma semplice dei cateti (Approssimazione sufficiente per la demo)
+                    // Invece di Pitagora (sqrt), sommiamo gli spostamenti asse X e Y
+                    distDeg = dLat + dLon;
+                    
+                    // Conversione in KM (1 grado ~= 111km)
+                    distKm = distDeg * 111.0;
+                    // 4. Aggiorno contatore totale
+                    global.vehicles.(vid).totalKm = global.vehicles.(vid).totalKm + distKm;
+
+                    println@Console(" > " + vid + " moved. Tot KM: " + global.vehicles.(vid).totalKm )()
+                } else {
+                    // Creazione al volo se non esiste (fallback)
+                    global.vehicles.(vid).lat = request.location.latitude;
+                    global.vehicles.(vid).lon = request.location.longitude;
+                    global.vehicles.(vid).totalKm = 0.0;
+                    global.vehicles.(vid).status = "AVAILABLE"
+                }
             }
         } ]
 
-        // Restituisce la lista completa di tutti i veicoli gestiti
-        [ getVehicleList( request )( response ) {
+        [ getInfo( request )( response ) {
+            vid = request.vehicleId;
             synchronized( trackingLock ) {
-                // Itera sulla mappa globale dei veicoli e costruisce l'array di risposta
+                if ( is_defined( global.vehicles.(vid) ) ) {
+                    response.vehicleId = vid;
+                    response.location.latitude = global.vehicles.(vid).lat;
+                    response.location.longitude = global.vehicles.(vid).lon;
+                    response.status = global.vehicles.(vid).status;
+                    response.totalKm = global.vehicles.(vid).totalKm
+                } else {
+                    // Veicolo non trovato
+                    println@Console("Richiesta getInfo per veicolo sconosciuto1: " + vid)();
+                    response.vehicleId = vid;
+                    response.status = "UNKNOWN";
+                    response.totalKm = 0.0;
+                    response.location.latitude = 0.0;
+                    response.location.longitude = 0.0
+                }
+            }
+        } ]
+
+        [ setStatus( request )( response ) {
+            synchronized( trackingLock ) {
+                if ( is_defined( global.vehicles.(request.vehicleId) ) ) {
+                    global.vehicles.(request.vehicleId).status = request.status
+                }
+            }
+        } ]
+
+        [ getVehicleList( request )( response ) {
+             synchronized( trackingLock ) {
                 foreach( vid : global.vehicles ) {
-                    i = #response.vehicles; // Indice corrente
+                    i = #response.vehicles;
                     response.vehicles[i].vehicleId = vid;
                     response.vehicles[i].status = global.vehicles.(vid).status;
+                    response.vehicles[i].totalKm = global.vehicles.(vid).totalKm;
                     response.vehicles[i].location.latitude = global.vehicles.(vid).lat;
                     response.vehicles[i].location.longitude = global.vehicles.(vid).lon
                 }

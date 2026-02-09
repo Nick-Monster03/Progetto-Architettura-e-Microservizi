@@ -17,7 +17,7 @@ services:
       context: ../src/fleet-management/tracking
     container_name: tracking-service
     expose:
-      - "8084" # Esposto solo nella rete interna
+      - "8084"
     networks:
       - acme-net
 
@@ -44,8 +44,8 @@ services:
   # Fleet Gateway (Jolie - REST API + SOAP Client)
   fleet-gateway:
     build:
-      context: ../src/fleet-management
-      dockerfile: gateway/Dockerfile
+      context: ../src
+      dockerfile: fleet-management/gateway/Dockerfile
     container_name: fleet-gateway
     ports:
       - "8082:8082"
@@ -57,6 +57,7 @@ services:
       - tracking-service
       - battery-service
       - calculator-service
+      - simulator-service
     networks:
       - acme-net
 
@@ -71,20 +72,37 @@ services:
       - acme-net
 
   # Simulator Service 
-  simulator:
+  simulator-service:  
     build:
-      context: ../src/simulation
-    container_name: acme-simulator
-    environment:
-      - TRACKING_HOST=tracking-service
-      - BATTERY_HOST=battery-service
+      context: ../src
+      dockerfile: simulation/Dockerfile
+    container_name: simulator-service
+    ports:
+      - "8086:8086"
     depends_on:
       - tracking-service
       - battery-service
     networks:
       - acme-net
+    
+  # Database per Camunda (Con Healthcheck!)
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: camunda
+      POSTGRES_USER: camunda
+      POSTGRES_PASSWORD: camunda
+    networks:
+      - acme-net
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camunda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Camunda BPMS
+  # Camunda BPMS (Configurato per Postgres)
   camunda:
     image: camunda/camunda-bpm-platform:run-latest
     container_name: acme-camunda
@@ -92,6 +110,19 @@ services:
       - "8080:8080"
     environment:
       - CAMUNDA_bpm_run_cors_enabled=true
+      - DB_DRIVER=org.postgresql.Driver
+      - DB_URL=jdbc:postgresql://postgres:5432/camunda
+      - DB_USERNAME=camunda
+      - DB_PASSWORD=camunda
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bank-service:
+        condition: service_started
+      station-service:
+        condition: service_started
+      fleet-gateway:
+        condition: service_started
     networks:
       - acme-net
 
@@ -105,6 +136,10 @@ services:
     networks:
       - acme-net
 
+
 networks:
   acme-net:
     driver: bridge
+
+volumes:
+  postgres-data:

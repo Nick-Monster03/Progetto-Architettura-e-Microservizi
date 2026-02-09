@@ -1,88 +1,41 @@
 type StartTrackingRequest {
-    vehicleId: string
-    userId: string
-    clientName: string
-    time: long // timestamp in millisecondi
-    isReservationPickup?: bool // true se deriva da una prenotazione esistente
-    cardNumber?: string
+    .vehicleId: string
+    .userId: string
 }
 
 type StartTrackingResponse {
-    success: bool
-    message: string
+    .success: bool
+    .message: string
 }
 
 type StopTrackingRequest {
-    vehicleId: string
-    userId: string
-    time: long
-    // battery: int 
+    .vehicleId: string
+    .userId: string
 }
 
 type StopTrackingResponse {
-    success: bool
-    message: string
+    .success: bool
+    .message: string
+    .kilometers: double      
+    .batteryConsumed: double 
+    .finalBattery: int
 }
 
 type GetStatusRequest {
-    userId: string
-    vehicleId: string
+    .vehicleId: string
 }
 
 type GetStatusResponse {
-    vehicleId: string
-    batteryLevel: int
-    latitude: double 
-    longitude: double 
-    status: string 
-}
-
-type BookVehicleRequest {
     .vehicleId: string
-    .userId: string
-    .cardNumber: string
-    .clientName: string
+    .batteryLevel: int
+    .latitude: double 
+    .longitude: double 
+    .status: string 
 }
-
-type BookVehicleResponse {
-    .success: bool
-    .message: string
-}
-
-type RegisterUserRequest {
-    .username: string
-    .password: string 
-}
-
-type RegisterUserResponse {
-    .success: bool
-    .message: string
-}
-
-type ClientLocation {
-    latitude: double
-    longitude: double
-}
-
-type ClientVehicleInfo {
-    .vehicleId: string
-    .location: ClientLocation 
-    .status: string
-    .batteryLevel?: int 
-}
-
-type GetMapResponse {
-    vehicles*: ClientVehicleInfo 
-}
-// ------------------------------------------
 
 interface FleetInterface {
     RequestResponse:
         startTracking(StartTrackingRequest)(StartTrackingResponse),
         stopTracking(StopTrackingRequest)(StopTrackingResponse),
-        getStatus(GetStatusRequest)(GetStatusResponse),
-        bookVehicle(BookVehicleRequest)(BookVehicleResponse),
-        registerUser(RegisterUserRequest)(RegisterUserResponse),
-        getMap( void )( GetMapResponse ),
-        handleOptions(void)(void)
+        getStatus(GetStatusRequest)(GetStatusResponse)
 }

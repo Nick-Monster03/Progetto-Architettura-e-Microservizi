@@ -6,38 +6,44 @@ type UnlockRequest {
 type UnlockResponse {
     success: bool
     message: string
-    sid: string
 }
 
 type LockRequest {
     vehicleId: string
     stationId: string
-    sid: string
 }
 
 type LockResponse {
     success: bool
     message: string
+    finalBatteryLevel: double
 }
 
-type ReserveRequest {
-    vehicleId: string
-    userId: string
-}
-
-type ReserveResponse {
-    success: bool
+type FaultType {
     message: string
 }
 
-type StationFaultType {
-    stationId: string
-    reason: string
+type VehicleNotFoundFaultType {
+    message: string
+}
+
+type VehicleNotAvailableFaultType {
+    message: string
+    currentStatus?: string
+}
+
+type HardwareErrorFaultType {
+    message: string
+    vehicleId?: string
 }
 
 interface StationInterface {
     RequestResponse:
-        unlock(UnlockRequest)(UnlockResponse) throws StationHardwareFault( StationFaultType ),
-        lock(LockRequest)(LockResponse),
-        reserve(ReserveRequest)(ReserveResponse)
+        unlock(UnlockRequest)(UnlockResponse) 
+            throws HardwareErrorFault(HardwareErrorFaultType) 
+                   VehicleNotFoundFault(VehicleNotFoundFaultType) 
+                   VehicleNotAvailableFault(VehicleNotAvailableFaultType),
+        lock(LockRequest)(LockResponse) 
+            throws HardwareErrorFault(HardwareErrorFaultType) 
+                   VehicleNotFoundFault(VehicleNotFoundFaultType),
 }

@@ -1,17 +1,17 @@
 {
-    "basePath": "/",
+    "basePath": "\/",
     "paths": {
         "/stopTracking": {
             "post": {
                 "produces": [
-                    "application/json"
+                    "application\/json"
                 ],
                 "description": "",
                 "operationId": "stopTracking",
                 "responses": {
                     "200": {
                         "schema": {
-                            "$ref": "#/definitions/StopTrackingResponse"
+                            "$ref": "#\/definitions\/StopTrackingResponse"
                         },
                         "description": "OK"
                     },
@@ -22,7 +22,7 @@
                 "parameters": [
                     {
                         "schema": {
-                            "$ref": "#/definitions/StopTrackingRequest"
+                            "$ref": "#\/definitions\/StopTrackingRequest"
                         },
                         "in": "body",
                         "name": "body",
@@ -33,21 +33,21 @@
                     "FleetInterface"
                 ],
                 "consumes": [
-                    "application/json"
+                    "application\/json"
                 ]
             }
         },
-        "/getStatus": {
+        "/getStatus/{vehicleId}": {
             "get": {
                 "produces": [
-                    "application/json"
+                    "application\/json"
                 ],
                 "description": "",
                 "operationId": "getStatus",
                 "responses": {
                     "200": {
                         "schema": {
-                            "$ref": "#/definitions/GetStatusResponse"
+                            "$ref": "#\/definitions\/GetStatusResponse"
                         },
                         "description": "OK"
                     },
@@ -61,33 +61,27 @@
                         "name": "vehicleId",
                         "type": "string",
                         "required": true
-                    },
-                    {
-                        "in": "query",
-                        "name": "userId",
-                        "type": "string",
-                        "required": true
                     }
                 ],
                 "tags": [
                     "FleetInterface"
                 ],
                 "consumes": [
-                    "application/json"
+                    "application\/json"
                 ]
             }
         },
         "/startTracking": {
             "post": {
                 "produces": [
-                    "application/json"
+                    "application\/json"
                 ],
                 "description": "",
                 "operationId": "startTracking",
                 "responses": {
                     "200": {
                         "schema": {
-                            "$ref": "#/definitions/StartTrackingResponse"
+                            "$ref": "#\/definitions\/StartTrackingResponse"
                         },
                         "description": "OK"
                     },
@@ -98,7 +92,7 @@
                 "parameters": [
                     {
                         "schema": {
-                            "$ref": "#/definitions/StartTrackingRequest"
+                            "$ref": "#\/definitions\/StartTrackingRequest"
                         },
                         "in": "body",
                         "name": "body",
@@ -109,12 +103,12 @@
                     "FleetInterface"
                 ],
                 "consumes": [
-                    "application/json"
+                    "application\/json"
                 ]
             }
         }
     },
-    "host": "localhost:8082",
+    "host": "fleet-gateway:8082",
     "definitions": {
         "StartTrackingResponse": {
             "type": "object",
@@ -131,9 +125,6 @@
             "type": "object",
             "properties": {
                 "vehicleId": {
-                    "type": "string"
-                },
-                "userId": {
                     "type": "string"
                 }
             }
@@ -163,11 +154,22 @@
         "StopTrackingResponse": {
             "type": "object",
             "properties": {
+                "batteryConsumed": {
+                    "format": "double",
+                    "type": "number"
+                },
                 "success": {
                     "type": "boolean"
                 },
+                "kilometers": {
+                    "format": "double",
+                    "type": "number"
+                },
                 "message": {
                     "type": "string"
+                },
+                "finalBattery": {
+                    "type": "integer"
                 }
             }
         },
@@ -176,10 +178,6 @@
             "properties": {
                 "vehicleId": {
                     "type": "string"
-                },
-                "time": {
-                    "format": "int64",
-                    "type": "number"
                 },
                 "userId": {
                     "type": "string"
@@ -192,10 +190,6 @@
                 "vehicleId": {
                     "type": "string"
                 },
-                "time": {
-                    "format": "int64",
-                    "type": "number"
-                },
                 "userId": {
                     "type": "string"
                 }
@@ -205,7 +199,7 @@
     "swagger": "2.0",
     "info": {
         "description": "",
-        "title": "FleetPublicPort API",
+        "title": "GatewayPort API",
         "version": ""
     },
     "tags": [

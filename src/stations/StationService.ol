@@ -1,148 +1,89 @@
-include "StationInterface.iol"
 include "console.iol"
+include "StationInterface.iol"
 
-service StationService {
+execution { concurrent }
 
-    // Esecuzione concorrente per servire più client simultaneamente
-    execution: concurrent
+inputPort StationPort {
+    Location: "socket://0.0.0.0:8083"
+    Protocol: soap
+    Interfaces: StationInterface
+}
 
-    // Definizione del Correlation Set per la sessione
-    // Collega il SID generato nella risposta di 'unlock' al SID richiesto in 'lock'
-    cset {
-        sid: UnlockResponse.sid LockRequest.sid
-    }
+/* STATO DEI VEICOLI (Simulato) */
+init {
+    // Mappa: vehicleId -> status ("LOCKED", "UNLOCKED")
+    // Popoliamo 5 stazioni/veicoli come da specifiche
+    global.vehicles.("car1").status = "LOCKED";
+    global.vehicles.("car1").battery = 100;
+    
+    global.vehicles.("car2").status = "LOCKED";
+    global.vehicles.("car2").battery = 80;
 
-    inputPort StationPort {
-        // Usa 0.0.0.0 per Docker (fix DevMatte)
-        Location: "socket://0.0.0.0:8083"
-        Protocol: soap {
-            .wsdl = "./StationService.wsdl";
-            .wsdl.port = "StationPortServicePort";
-            .dropRootValue = true
+    // Veicolo "guasto" per testare i Fault
+    global.vehicles.("car9").status = "BROKEN"; 
+
+    println@Console( "Station Service avviato (Porta 8083)" )()
+}
+
+main {
+    
+    // OPERAZIONE UNLOCK
+    [ unlock( request )( response ) {
+        vid = request.vehicleId;
+        println@Console( "Richiesta UNLOCK per veicolo: " + vid )();
+
+        synchronized( lockManager ) {
+            if ( !is_defined( global.vehicles.(vid) ) ) {
+                // FAULT: Veicolo non esiste
+                with( error ) { .message = "Veicolo " + vid + " non trovato in stazione" };
+                throw( VehicleNotFoundFault, error )
+            }
+            else if ( global.vehicles.(vid).status == "BROKEN" ) {
+                // FAULT: Errore Hardware (Simulato)
+                with( error ) { .message = "Errore hardware sblocco veicolo " + vid };
+                throw( HardwareErrorFault, error )
+            }
+            else if ( global.vehicles.(vid).status == "UNLOCKED" ) {
+                // FAULT: Già in uso
+                with( error ) { .message = "Veicolo già sbloccato/in uso" };
+                throw( VehicleNotAvailableFault, error )
+            }
+            else {
+                // OK: Sblocco
+                global.vehicles.(vid).status = "UNLOCKED";
+                response.success = true;
+                response.message = "Veicolo sbloccato correttamente";
+                println@Console( " > Veicolo " + vid + " SBLOCCATO." )()
+            }
         }
-        Interfaces: StationInterface
-    }
+    } ]
 
-    init {
-        println@Console("--- STATION SERVICE AVVIATO (Porta 8083) ---")();
-        
-        // Logica di inizializzazione da 'develope' (più ricca per i test)
-        
-        // Veicolo 1: Libero a Termini
-        global.station_vehicles.("v1").locked = true
-        global.station_vehicles.("v1").station = "Termini"
-        global.station_vehicles.("v1").reserved = false
+    // OPERAZIONE LOCK
+    [ lock( request )( response ) {
+        vid = request.vehicleId;
+        println@Console( "Richiesta LOCK per veicolo: " + vid )();
 
-        // Veicolo 2: Libero a Tiburtina
-        global.station_vehicles.("v2").locked = true
-        global.station_vehicles.("v2").station = "Tiburtina"
-        global.station_vehicles.("v2").reserved = false
-
-        // Veicolo 3: Già prenotato (per testare fallimenti)
-        global.station_vehicles.("v3").locked = true
-        global.station_vehicles.("v3").station = "Eur-Fermi"
-        global.station_vehicles.("v3").reserved = true
-        global.station_vehicles.("v3").reservedBy = "user_b" 
-    }
-
-    main {
-
-        // Operazione 'reserve' (presente solo in develope, fondamentale per la traccia)
-        [ reserve( request )( response ) {
-            id = request.vehicleId;
-            user = request.userId;
-            println@Console( "[RESERVE] Richiesta per veicolo " + id + " da utente " + user )();
-
-            synchronized( lock ) {
-                if ( !is_defined( global.station_vehicles.(id) ) ) {
-                    response.success = false;
-                    response.message = "Veicolo non esistente"
-                } 
-                else if ( global.station_vehicles.(id).locked && !global.station_vehicles.(id).reserved ) {
-                    global.station_vehicles.(id).reserved = true;
-                    global.station_vehicles.(id).reservedBy = user;
-                    
-                    response.success = true;
-                    response.message = "Veicolo prenotato con successo per 30 min."
-                } else {
-                    response.success = false;
-                    response.message = "Veicolo non disponibile (in uso o già prenotato)."
-                }
+        synchronized( lockManager ) {
+            if ( !is_defined( global.vehicles.(vid) ) ) {
+                with( error ) { .message = "Veicolo sconosciuto" };
+                throw( VehicleNotFoundFault, error )
             }
-        } ]
-
-        // Operazione 'unlock' con logica di business avanzata (develope)
-        [ unlock( request )( response ) {
-            id = request.vehicleId;
-            user = request.userId;
-            println@Console( "[UNLOCK] Tentativo sblocco " + id + " utente " + user )();
-            
-            synchronized( lock ) {
-                // Fallback: crea il veicolo se non esiste (utile per test al volo)
-                if ( !is_defined( global.station_vehicles.(id) ) ) {
-                     global.station_vehicles.(id).locked = true;
-                     global.station_vehicles.(id).reserved = false;
-                     println@Console( "WARNING: Veicolo creato al volo per test." )()
-                };
-
-                canUnlock = false;
+            else {
+                // OK: Blocco
+                global.vehicles.(vid).status = "LOCKED";
                 
-                // CASO A: Veicolo Prenotato
-                if ( global.station_vehicles.(id).reserved ) {
-                    if ( global.station_vehicles.(id).reservedBy == user ) {
-                        println@Console( "-> OK: Utente corrisponde alla prenotazione." )();
-                        canUnlock = true;
-                        // Consumiamo la prenotazione
-                        global.station_vehicles.(id).reserved = false;
-                        undef( global.station_vehicles.(id).reservedBy )
-                    } else {
-                        println@Console( "-> ERRORE: Veicolo riservato a un altro utente!" )();
-                        canUnlock = false;
-                        response.message = "Veicolo riservato ad un altro utente."
-                    }
-                } 
-                // CASO B: Noleggio Immediato (Nessuna prenotazione)
-                else {
-                    if ( global.station_vehicles.(id).locked ) {
-                        println@Console( "-> OK: Noleggio immediato." )();
-                        canUnlock = true
-                    } else {
-                        println@Console( "-> ERRORE: Veicolo già in uso." )();
-                        canUnlock = false;
-                        response.message = "Veicolo già in uso."
-                    }
-                };
+                // Simuliamo consumo batteria casuale (o leggiamo mock)
+                // Per ora statico per semplicità, poi collegheremo al Fleet se serve
+                finalBat = global.vehicles.(vid).battery - 5; 
+                if (finalBat < 0) finalBat = 0;
+                global.vehicles.(vid).battery = finalBat;
+
+                response.success = true;
+                response.message = "Veicolo bloccato";
+                response.finalBatteryLevel = finalBat;
                 
-                if ( canUnlock ) {
-                    global.station_vehicles.(id).locked = false;
-                    
-                    csets.sid = new;
-                    response.sid = csets.sid;
-                    
-                    response.success = true;
-                    response.message = "Veicolo sbloccato. Buon viaggio!"
-                } else {
-                    response.success = false;
-                    response.sid = ""
-                    // message già settato nei rami else sopra
-                }
+                println@Console( " > Veicolo " + vid + " BLOCCATO. Batt: " + finalBat + "%" )()
             }
-        } ]
-
-        // Operazione 'lock'
-        [ lock( request )( response ) {
-            id = request.vehicleId;
-            station = request.stationId;
-            println@Console( "[LOCK] Riconsegna veicolo " + id + " a " + station )();
-
-            synchronized( lock ) {
-                global.station_vehicles.(id).locked = true;
-                global.station_vehicles.(id).station = station;
-                global.station_vehicles.(id).reserved = false 
-            };
-
-            response.success = true;
-            response.message = "Veicolo bloccato e parcheggiato."
-        } ]
-    }
+        }
+    } ]
 }
