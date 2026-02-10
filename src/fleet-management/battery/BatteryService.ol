@@ -15,26 +15,31 @@ service BatteryService {
         }
         Interfaces: BatteryInterface
     }
-    
+
     init {
-        // Dati iniziali
-        global.batteries.("car1") = 100;
-        global.batteries.("car2") = 100
+        
+        global.vehicles.("car1").battery = 76;
+        global.vehicles.("car2").battery = 80;
+        global.vehicles.("car3").battery = 100;
+        println@Console("Battery Service avviato su porta 8085 (SOAP)")()
     }
+    
 
     main {
         [ updateBattery( request )( response ) {
             synchronized( batteryLock ) {
-                global.batteries.(request.vehicleId) = request.level
+                global.vehicles.(request.vehicleId).battery = request.level
             };
             println@Console("[BATTERY] Aggiornata " + request.vehicleId + ": " + request.level + "%")()
         } ]
 
         [ getBattery( request )( response ) {
             synchronized( batteryLock ) {
-                if ( is_defined( global.batteries.(request.vehicleId) ) ) {
-                    response.level = global.batteries.(request.vehicleId)
+                if ( is_defined( global.vehicles.(request.vehicleId).battery ) ) {
+                    response.level = global.vehicles.(request.vehicleId).battery
+                    println@Console("[BATTERY] GetBattery per " + request.vehicleId + ": " + response.level + "%")()
                 } else {
+                    println@Console("[BATTERY] GetBattery per " + request.vehicleId + ": Veicolo non trovato, restituisco 100%")()
                     response.level = 100 
                 }
             }

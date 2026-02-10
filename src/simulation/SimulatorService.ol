@@ -29,9 +29,8 @@ service SimulatorService {
 
     init {
         //DEBUG
-        // println@Console("=== SIMULATORE TRAFFICO (GPS + BATTERIA) AVVIATO ===")();
+        println@Console("=== SIMULATORE TRAFFICO (GPS + BATTERIA) AVVIATO ===")()
         // println@Console("[SIM] In attesa di comando startSimulation...")();
-        global.simulationRunning = false
     }
 
     main {
@@ -39,16 +38,15 @@ service SimulatorService {
             println@Console("[SIM] Ricevuto comando START per veicolo: " + request.vehicleId)();
             
             synchronized( simLock ) {
-                if ( !global.simulationRunning ) {
-                    global.simulationRunning = true;
-                    global.currentVehicleId = request.vehicleId
+                if ( !global.simulationRunning.( request.vehicleId ) ) {
+                    global.simulationRunning.( request.vehicleId ) = true
                 } 
             };
 
-            if ( global.simulationRunning ) {
+            if ( global.simulationRunning.( request.vehicleId ) ) {
                 // Avvio il ciclo di simulazione
                 sleep@Time( 7000 )();
-                while( global.simulationRunning ) {
+                while( global.simulationRunning.( request.vehicleId ) ) {
                     
                     scope( sim_car ) {
                         install( 
@@ -59,7 +57,7 @@ service SimulatorService {
                                 }
                         );
                         
-                        vid = global.currentVehicleId;
+                        vid = request.vehicleId;
                         println@Console("[SIM] Simulazione in corso per veicolo: " + vid)();
                         getInfo@TrackingClient( { .vehicleId = vid } )( info );
                         getBattery@BatteryClient( { .vehicleId = vid } )( batResp );
@@ -82,20 +80,21 @@ service SimulatorService {
 
                         } else {
                             println@Console(" [SIM] BATTERIA SCARICA - Simulazione terminata")();
-                            global.simulationRunning = false
+                            global.simulationRunning.( request.vehicleId ) = false
                         }
                     }
                 
                 }
             }
+            undef(request)
         } 
 
         [ stopSimulation( request )( response ) {
             println@Console("[SIM] Ricevuto comando STOP per veicolo: " + request.vehicleId)();
             
             synchronized( simLock ) {
-                if ( global.simulationRunning ) {
-                    global.simulationRunning = false;
+                if ( global.simulationRunning.( request.vehicleId ) ) {
+                    global.simulationRunning.( request.vehicleId ) = false;
                     
                     // Recupero i dati finali dal Tracking e Battery Service
                     vid = request.vehicleId;

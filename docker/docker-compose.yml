@@ -61,7 +61,6 @@ services:
     networks:
       - acme-net
 
-  # Station Service (Jolie - SOAP)
   station-service:
     build:
       context: ../src/stations

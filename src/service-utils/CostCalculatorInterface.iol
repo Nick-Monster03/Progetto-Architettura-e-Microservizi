@@ -1,12 +1,19 @@
-type CalculateRequest {
-    minutes: long
-    batteryLevel: int
+type CalculatePriceRequest {
+    .durationMinutes: double
+    .kilometers: double
+    .finalBatteryLevel: int  
 }
-type CalculateResponse {
-    totalCost: double
-    message: string
+
+
+type PriceBreakdown {
+    .basePriceTime: double      
+    .basePriceDistance: double  
+    .subtotal: double           // basePriceTime + basePriceDistance
+    .penalty: double           
+    .total: double              
+    .needsPenalty: bool         
 }
 
 interface CostCalculatorInterface {
-    RequestResponse: calculateCost(CalculateRequest)(CalculateResponse)
+    RequestResponse: calculateCost(CalculatePriceRequest)(PriceBreakdown)
 }

@@ -15,16 +15,20 @@ service TrackingService {
     }
 
     init {
-        // Dati iniziali (Bari)
         global.vehicles.("car1").lat = 41.1171;
         global.vehicles.("car1").lon = 16.8719;
         global.vehicles.("car1").status = "AVAILABLE";
-        global.vehicles.("car1").totalKm = 0.0; // Inizializzo contatore
+        global.vehicles.("car1").totalKm = 0.0;
 
         global.vehicles.("car2").lat = 41.1222;
         global.vehicles.("car2").lon = 16.8715;
         global.vehicles.("car2").status = "AVAILABLE";
         global.vehicles.("car2").totalKm = 0.0;
+
+        global.vehicles.("car3").lat = 41.1200;
+        global.vehicles.("car3").lon = 16.8700;
+        global.vehicles.("car3").status = "AVAILABLE";
+        global.vehicles.("car3").totalKm = 0.0;
 
         println@Console("Tracking Service avviato (SOAP port 8084)")()
     }
@@ -67,7 +71,6 @@ service TrackingService {
 
                     println@Console(" > " + vid + " moved. Tot KM: " + global.vehicles.(vid).totalKm )()
                 } else {
-                    // Creazione al volo se non esiste (fallback)
                     global.vehicles.(vid).lat = request.location.latitude;
                     global.vehicles.(vid).lon = request.location.longitude;
                     global.vehicles.(vid).totalKm = 0.0;
