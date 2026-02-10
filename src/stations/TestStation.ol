@@ -23,171 +23,185 @@ main {
     global.testsPassed = 0;
     global.testsFailed = 0;
 
-    // ========== TEST 1: UNLOCK - Successo con veicolo disponibile ==========
-    scope(test_unlock_success) {
-        install(
-            HardwareErrorFault => {
-                println@Console("⚠ HardwareErrorFault casuale - riprovo...")();
-                test1Retry = true
-            },
-            VehicleNotFoundFault => {
-                println@Console("❌ TEST 1 FAILED: VehicleNotFoundFault - " + test_unlock_success.VehicleNotFoundFault.message)();
-                global.testsFailed++
-            },
-            VehicleNotAvailableFault => {
-                println@Console("❌ TEST 1 FAILED: VehicleNotAvailableFault - " + test_unlock_success.VehicleNotAvailableFault.message)();
-                global.testsFailed++
-            },
-            default => {
-                println@Console("⚠ Fault generico casuale - riprovo...")();
-                test1Retry = true
-            }
-        );
-        
+    // ========== TEST 1: GET ALL STATIONS - Verifica tutte le stazioni ==========
+    scope(test_get_all_stations) {
         global.testsTotal++;
-        println@Console("\n[TEST 1] UNLOCK - Veicolo disponibile (v001)")();
+        println@Console("\n[TEST 1] GET ALL STATIONS - Recupera tutte le stazioni")();
         println@Console("─────────────────────────────────────────────────")();
         
-        // Riprova finché non ha successo (max 10 tentativi)
-        test1Success = false;
-        test1Attempts = 0;
-        while(!test1Success && test1Attempts < 10) {
-            test1Retry = false;
-            test1Attempts++;
+        getAllStations@StationPort()(stationsRes);
+        
+        println@Console("✓ Ricevute " + #stationsRes.stations + " stazioni")();
+        
+        for(i = 0, i < #stationsRes.stations, i++) {
+            println@Console("\n  Stazione: " + stationsRes.stations[i].stationId)();
+            println@Console("  Veicoli (" + #stationsRes.stations[i].vehicles + "):")();
             
-            unlockReq.vehicleId = "v001";
-            unlockReq.userId = "user123";
-            
-            unlock@StationPort(unlockReq)(unlockRes);
-            
-            if (!test1Retry && unlockRes.success) {
-                test1Success = true;
-                println@Console("✓ TEST 1 PASSED: " + unlockRes.message + " (tentativo " + test1Attempts + ")")();
-                global.testsPassed++
-            } else if (test1Retry) {
-                sleep@Time(200)() // Pausa prima di riprovare
+            for(j = 0, j < #stationsRes.stations[i].vehicles, j++) {
+                println@Console("    - " + stationsRes.stations[i].vehicles[j].vehicleId + 
+                    " | Status: " + stationsRes.stations[i].vehicles[j].status + 
+                    " | Battery: " + stationsRes.stations[i].vehicles[j].battery + "%")()
             }
         };
         
-        if (!test1Success) {
-            println@Console("❌ TEST 1 FAILED: Troppi errori hardware casuali")();
+        if (#stationsRes.stations == 3) {
+            println@Console("\n✓ TEST 1 PASSED: Ricevute 3 stazioni come atteso")();
+            global.testsPassed++
+        } else {
+            println@Console("\n❌ TEST 1 FAILED: Attese 3 stazioni, ricevute " + #stationsRes.stations)();
             global.testsFailed++
         }
     };
 
     sleep@Time(500)();
 
-    // ========== TEST 2: UNLOCK - Veicolo non trovato ==========
+    // ========== TEST 2: UNLOCK - Successo con veicolo disponibile ==========
+    scope(test_unlock_success) {
+        install(
+            HardwareErrorFault => {
+                println@Console("❌ TEST 2 FAILED: HardwareErrorFault - " + test_unlock_success.HardwareErrorFault.message)();
+                global.testsFailed++
+            },
+            VehicleNotFoundFault => {
+                println@Console("❌ TEST 2 FAILED: VehicleNotFoundFault - " + test_unlock_success.VehicleNotFoundFault.message)();
+                global.testsFailed++
+            },
+            VehicleNotAvailableFault => {
+                println@Console("❌ TEST 2 FAILED: VehicleNotAvailableFault - " + test_unlock_success.VehicleNotAvailableFault.message)();
+                global.testsFailed++
+            }
+        );
+        
+        global.testsTotal++;
+        println@Console("\n[TEST 2] UNLOCK - Veicolo disponibile (car1)")();
+        println@Console("─────────────────────────────────────────────────")();
+        
+        unlockReq.vehicleId = "car1";
+        unlockReq.userId = "user123";
+        unlockReq.stationId = "station1";
+        
+        unlock@StationPort(unlockReq)(unlockRes);
+        
+        if (unlockRes.success) {
+            println@Console("✓ TEST 2 PASSED: " + unlockRes.message)();
+            global.testsPassed++
+        } else {
+            println@Console("❌ TEST 2 FAILED: Unlock non riuscito")();
+            global.testsFailed++
+        }
+    };
+
+    sleep@Time(500)();
+
+    // ========== TEST 3: UNLOCK - Veicolo non trovato ==========
     scope(test_unlock_not_found) {
         install(
             VehicleNotFoundFault => {
-                println@Console("✓ TEST 2 PASSED: VehicleNotFoundFault correttamente lanciato")();
+                println@Console("✓ TEST 3 PASSED: VehicleNotFoundFault correttamente lanciato")();
                 println@Console("  Messaggio: " + test_unlock_not_found.VehicleNotFoundFault.message)();
                 global.testsPassed++
             },
             HardwareErrorFault => {
-                println@Console("❌ TEST 2 FAILED: Ricevuto HardwareErrorFault invece di VehicleNotFoundFault")();
+                println@Console("❌ TEST 3 FAILED: Ricevuto HardwareErrorFault invece di VehicleNotFoundFault")();
                 global.testsFailed++
             },
             VehicleNotAvailableFault => {
-                println@Console("❌ TEST 2 FAILED: Ricevuto VehicleNotAvailableFault invece di VehicleNotFoundFault")();
+                println@Console("❌ TEST 3 FAILED: Ricevuto VehicleNotAvailableFault invece di VehicleNotFoundFault")();
                 global.testsFailed++
             },
             default => {
-                println@Console("✓ TEST 2 PASSED: Fault generico ricevuto (atteso per SOAP)")();
+                println@Console("✓ TEST 3 PASSED: Fault generico ricevuto (atteso per SOAP)")();
                 println@Console("  Fault name: " + test_unlock_not_found.default)();
                 global.testsPassed++
             }
         );
         
         global.testsTotal++;
-        println@Console("\n[TEST 2] UNLOCK - Veicolo non esistente (v999)")();
+        println@Console("\n[TEST 3] UNLOCK - Veicolo non esistente (car999)")();
         println@Console("─────────────────────────────────────────────────")();
         
-        unlockReq2.vehicleId = "v999";
+        unlockReq2.vehicleId = "car999";
         unlockReq2.userId = "user123";
+        unlockReq2.stationId = "station1";
         
         unlock@StationPort(unlockReq2)(unlockRes2);
         
         // Se arriviamo qui, il fault non è stato lanciato
-        println@Console("❌ TEST 2 FAILED: Nessun fault lanciato per veicolo inesistente")();
+        println@Console("❌ TEST 3 FAILED: Nessun fault lanciato per veicolo inesistente")();
         global.testsFailed++
     };
 
     sleep@Time(500)();
 
-    // ========== TEST 3: UNLOCK - Veicolo già in noleggio ==========
+    // ========== TEST 4: UNLOCK - Veicolo già in noleggio ==========
     scope(test_unlock_already_rented) {
         install(
             VehicleNotAvailableFault => {
-                println@Console("✓ TEST 3 PASSED: VehicleNotAvailableFault correttamente lanciato")();
+                println@Console("✓ TEST 4 PASSED: VehicleNotAvailableFault correttamente lanciato")();
                 println@Console("  Messaggio: " + test_unlock_already_rented.VehicleNotAvailableFault.message)();
                 println@Console("  Status: " + test_unlock_already_rented.VehicleNotAvailableFault.currentStatus)();
                 global.testsPassed++
             },
             HardwareErrorFault => {
-                println@Console("❌ TEST 3 FAILED: Ricevuto HardwareErrorFault")();
+                println@Console("❌ TEST 4 FAILED: Ricevuto HardwareErrorFault")();
                 global.testsFailed++
             },
             VehicleNotFoundFault => {
-                println@Console("❌ TEST 3 FAILED: Ricevuto VehicleNotFoundFault")();
+                println@Console("❌ TEST 4 FAILED: Ricevuto VehicleNotFoundFault")();
                 global.testsFailed++
             },
             default => {
-                println@Console("✓ TEST 3 PASSED: Fault generico ricevuto (atteso per SOAP - veicolo non disponibile)")();
+                println@Console("✓ TEST 4 PASSED: Fault generico ricevuto (atteso per SOAP - veicolo non disponibile)")();
                 println@Console("  Fault name: " + test_unlock_already_rented.default)();
                 global.testsPassed++
             }
         );
         
         global.testsTotal++;
-        println@Console("\n[TEST 3] UNLOCK - Veicolo già in noleggio (v001)")();
+        println@Console("\n[TEST 4] UNLOCK - Veicolo già in noleggio (car1)")();
         println@Console("─────────────────────────────────────────────────")();
         
-        unlockReq3.vehicleId = "v001"; // v001 è già stato sbloccato nel TEST 1
+        unlockReq3.vehicleId = "car1"; // car1 è già stato sbloccato nel TEST 2
         unlockReq3.userId = "user456";
+        unlockReq3.stationId = "station1";
         
         unlock@StationPort(unlockReq3)(unlockRes3);
         
-        println@Console("❌ TEST 3 FAILED: Nessun fault lanciato per veicolo già in noleggio")();
+        println@Console("❌ TEST 4 FAILED: Nessun fault lanciato per veicolo già in noleggio")();
         global.testsFailed++
     };
 
     sleep@Time(500)();
 
-    // ========== TEST 4: LOCK - Successo ==========
+    // ========== TEST 5: LOCK - Successo ==========
     scope(test_lock_success) {
         install(
             HardwareErrorFault => {
-                println@Console("⚠ TEST 4 PARTIAL: HardwareErrorFault (casuale) - " + test_lock_success.HardwareErrorFault.message)();
-                global.testsPassed++
-            },
-            VehicleNotFoundFault => {
-                println@Console("❌ TEST 4 FAILED: VehicleNotFoundFault - " + test_lock_success.VehicleNotFoundFault.message)();
+                println@Console("❌ TEST 5 FAILED: HardwareErrorFault - " + test_lock_success.HardwareErrorFault.message)();
                 global.testsFailed++
             },
-            default => {
-                println@Console("⚠ TEST 4 PARTIAL: Fault generico (possibile HW error casuale)")();
-                println@Console("  Fault name: " + test_lock_success.default)();
-                global.testsPassed++
+            VehicleNotFoundFault => {
+                println@Console("❌ TEST 5 FAILED: VehicleNotFoundFault - " + test_lock_success.VehicleNotFoundFault.message)();
+                global.testsFailed++
             }
         );
         
         global.testsTotal++;
-        println@Console("\n[TEST 4] LOCK - Restituisci veicolo alla stazione (v001 -> station2)")();
+        println@Console("\n[TEST 5] LOCK - Restituisci veicolo alla stazione (car1 -> station2)")();
         println@Console("─────────────────────────────────────────────────")();
         
-        lockReq.vehicleId = "v001";
+        lockReq.vehicleId = "car1";
         lockReq.stationId = "station2";
+        lockReq.userId = "user123";
         
         lock@StationPort(lockReq)(lockRes);
         
         if (lockRes.success) {
-            println@Console("✓ TEST 4 PASSED: Veicolo bloccato con successo")();
+            println@Console("✓ TEST 5 PASSED: " + lockRes.message)();
             println@Console("  Batteria finale: " + lockRes.finalBatteryLevel + "%")();
             global.testsPassed++
         } else {
-            println@Console("❌ TEST 4 FAILED: Lock non riuscito")();
+            println@Console("❌ TEST 5 FAILED: Lock non riuscito")();
             global.testsFailed++
         }
     };

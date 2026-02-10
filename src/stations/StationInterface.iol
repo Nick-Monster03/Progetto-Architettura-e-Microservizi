@@ -1,6 +1,7 @@
 type UnlockRequest {
     vehicleId: string
     userId: string
+    stationId: string
 }
 
 type UnlockResponse {
@@ -11,6 +12,7 @@ type UnlockResponse {
 type LockRequest {
     vehicleId: string
     stationId: string
+    userId: string
 }
 
 type LockResponse {
@@ -37,6 +39,21 @@ type HardwareErrorFaultType {
     vehicleId?: string
 }
 
+type VehicleInfo {
+    vehicleId: string
+    status: string
+    battery: double
+}
+
+type StationInfo {
+    stationId: string
+    vehicles*: VehicleInfo
+}
+
+type GetAllStationsResponse {
+    stations*: StationInfo
+}
+
 interface StationInterface {
     RequestResponse:
         unlock(UnlockRequest)(UnlockResponse) 
@@ -46,4 +63,5 @@ interface StationInterface {
         lock(LockRequest)(LockResponse) 
             throws HardwareErrorFault(HardwareErrorFaultType) 
                    VehicleNotFoundFault(VehicleNotFoundFaultType),
+        getAllStations(void)(GetAllStationsResponse)
 }
