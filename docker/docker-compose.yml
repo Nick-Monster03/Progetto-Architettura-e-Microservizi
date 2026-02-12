@@ -91,6 +91,8 @@ services:
       POSTGRES_DB: camunda
       POSTGRES_USER: camunda
       POSTGRES_PASSWORD: camunda
+    ports:
+      - "5432:5432"
     networks:
       - acme-net
     volumes:
@@ -102,28 +104,28 @@ services:
       retries: 5
 
   # Camunda BPMS (Configurato per Postgres)
-  camunda:
-    image: camunda/camunda-bpm-platform:run-latest
-    container_name: acme-camunda
-    ports:
-      - "8080:8080"
-    environment:
-      - CAMUNDA_bpm_run_cors_enabled=true
-      - DB_DRIVER=org.postgresql.Driver
-      - DB_URL=jdbc:postgresql://postgres:5432/camunda
-      - DB_USERNAME=camunda
-      - DB_PASSWORD=camunda
-    depends_on:
-      postgres:
-        condition: service_healthy
-      bank-service:
-        condition: service_started
-      station-service:
-        condition: service_started
-      fleet-gateway:
-        condition: service_started
-    networks:
-      - acme-net
+  # camunda:
+  #   image: camunda/camunda-bpm-platform:run-latest
+  #   container_name: acme-camunda
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - CAMUNDA_bpm_run_cors_enabled=true
+  #     - DB_DRIVER=org.postgresql.Driver
+  #     - DB_URL=jdbc:postgresql://postgres:5432/camunda
+  #     - DB_USERNAME=camunda
+  #     - DB_PASSWORD=camunda
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     bank-service:
+  #       condition: service_started
+  #     station-service:
+  #       condition: service_started
+  #     fleet-gateway:
+  #       condition: service_started
+  #   networks:
+  #     - acme-net
 
   # Client Frontend 
   client-app:
