@@ -41,47 +41,54 @@ service CostCalculator {
             duration = request.durationMinutes;
             km = request.kilometers;
             battery = request.finalBatteryLevel;
+            needsPenaltyTime = request.needsPenaltyTime;
             
             println@Console( "\n[CALCULATOR] === CALCULATE PRICE ===" )();
             println@Console( "[CALCULATOR] Duration: " + duration + " min" )();
             println@Console( "[CALCULATOR] Distance: " + km + " km" )();
             println@Console( "[CALCULATOR] Final Battery: " + battery + "%" )();
+            println@Console( "[CALCULATOR] Needs Late Penalty: " + needsPenaltyTime )();
             
             basePriceTime = duration * global.rates.timeRatePerMinute;
             basePriceDistance = km * global.rates.distanceRatePerKm;
             subtotal = basePriceTime + basePriceDistance;
-            needsPenalty = false;
-            penalty = 0.0;
             
+            batteryPenalty = 0.0;
             if( battery < global.rates.batteryThreshold ) {
-                needsPenalty = true;
-                penalty = subtotal * global.rates.penaltyPercentage
+                batteryPenalty = subtotal * global.rates.penaltyPercentage;
+                println@Console( "[CALCULATOR]   ⚠️  LOW BATTERY PENALTY: " + battery + "% < 15%" )()
             };
             
-            total = subtotal + penalty;
+            latePenalty = 0.0;
+            if( needsPenaltyTime ) {
+                latePenalty = global.rates.latePenaltyAmount;
+                println@Console( "[CALCULATOR]   ⚠️  LATE PICKUP PENALTY: €" + latePenalty )()
+            };
+            
+            totalPenalty = batteryPenalty + latePenalty;
+            total = subtotal + totalPenalty;
             
             round@Math( subtotal { .decimals = 2 } )( subtotalRounded );
-            round@Math( penalty { .decimals = 2 } )( penaltyRounded );
+            round@Math( batteryPenalty { .decimals = 2 } )( batteryPenaltyRounded );
+            round@Math( latePenalty { .decimals = 2 } )( latePenaltyRounded );
+            round@Math( totalPenalty { .decimals = 2 } )( totalPenaltyRounded );
             round@Math( total { .decimals = 2 } )( totalRounded );
             
             response.basePriceTime = basePriceTime;
             response.basePriceDistance = basePriceDistance;
             response.subtotal = subtotalRounded;
-            response.penalty = penaltyRounded;
+            response.penalty = totalPenaltyRounded;  // Penale TOTALE (batteria + tardiva)
             response.total = totalRounded;
-            response.needsPenalty = needsPenalty;
             
-            //DEBUG
-            // println@Console( "[CALCULATOR]   Time cost: €" + basePriceTime )();
-            // println@Console( "[CALCULATOR]   Distance cost: €" + basePriceDistance )();
-            // println@Console( "[CALCULATOR]   Subtotal: €" + subtotalRounded )();
-            
-            if( needsPenalty ) {
-                println@Console( "[CALCULATOR]   ⚠️  LOW BATTERY PENALTY: €" + penaltyRounded + " (" + 
-                    (global.rates.penaltyPercentage * 100) + "%)" )()
-            };
-            
-            println@Console( "[CALCULATOR]   TOTAL: €" + totalRounded )()
+            println@Console( "[CALCULATOR] --- BREAKDOWN ---" )();
+            println@Console( "[CALCULATOR]   Base Time: €" + basePriceTime )();
+            println@Console( "[CALCULATOR]   Base Distance: €" + basePriceDistance )();
+            println@Console( "[CALCULATOR]   Subtotal: €" + subtotalRounded )();
+            println@Console( "[CALCULATOR]   Battery Penalty: €" + batteryPenaltyRounded )();
+            println@Console( "[CALCULATOR]   Late Penalty: €" + latePenaltyRounded )();
+            println@Console( "[CALCULATOR]   Total Penalty: €" + totalPenaltyRounded )();
+            println@Console( "[CALCULATOR]   FINAL TOTAL: €" + totalRounded )();
+            println@Console( "[CALCULATOR] =================" )()
         }]
     }
 }

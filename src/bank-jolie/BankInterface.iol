@@ -2,7 +2,7 @@ type PreAuthorizeRequest {
     .userId: string
     .amount: double      // Importo da bloccare (es. 10.00 EUR per cauzione)
     .cardNumber: string
-    .expiryTime: long
+    .isRiservation:bool
 }
 
 type PreAuthorizeResponse {
@@ -15,7 +15,7 @@ type PreAuthorizeResponse {
 
 type CancelAuthRequest {
     .authToken: string
-    .expired: bool        // true se la cancellazione è avvenuta dopo i 25 minuti dalla prenotazione
+    .isExpired: bool        // true se la cancellazione è avvenuta dopo i 25 minuti dalla prenotazione
     .reason?: string      
 }
 
@@ -25,7 +25,7 @@ type CommitPaymentRequest {
     .duration: int        // Minuti di noleggio
     .kilometers: double   // Km percorsi
     .batteryLevel: int    // Livello batteria finale (0-100)
-    .penalty?: double     // Eventuale penale (es. batteria < 15%)
+    .penalty?: double     // Eventuale penale (es. batteria < 15% oppure ritiro dopo 25 min)
 }
 
 type CommitPaymentResponse {

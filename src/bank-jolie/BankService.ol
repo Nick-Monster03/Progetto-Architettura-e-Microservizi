@@ -91,10 +91,10 @@ service BankService {
                 // --- CASO 1: CANCELLAZIONE (OneWay) ---
                 println@Console( "\n[BANK] === CANCEL AUTH (" + session.userId + ") ===" )();
                 
-                // Campi request: .reason, .expired
+                // Campi request: .reason, .isExpired
                 
                 synchronized( balanceLock ) {
-                    if( request.expired ) {
+                    if( request.isExpired ) {
                         // Se scaduta, tratteniamo la cauzione (logica simulata)
                         println@Console( "[BANK] Expired: Deposit retained." )()
                     } else {
@@ -153,50 +153,29 @@ service BankService {
             } ] 
             
             [ commitPenalty( request )( response ) {
-                // --- CASO 3: PENALE (Ora alternativa al Payment) ---
                 println@Console( "\n[BANK] === COMMIT PENALTY (" + session.userId + ") ===" )();
-                
-                // Campi request: .penaltyAmount, .reason
+    
                 penaltyAmount = request.penaltyAmount;
                 
                 synchronized( balanceLock ) {
-                    currentBalance = global.balances.(session.userId);
                     
-                    if( penaltyAmount <= session.blockedAmount ) {
-                        // A: Penale coperta dalla cauzione -> Rimborso differenza
+                    // Cauzione già bloccata, tratteniamo quanto richiesto
+                    if( penaltyAmount < session.blockedAmount ) {
+                        // Rimborso parziale
                         refund = session.blockedAmount - penaltyAmount;
+                        currentBalance = global.balances.(session.userId);
                         global.balances.(session.userId) = currentBalance + refund;
-                        
-                        response.success = true;
-                        response.chargedAmount = penaltyAmount;
-                        response.receiptId = "RCP_PEN_" + session.userId;
-                        
-                        println@Console( "[BANK] Penalty covered. Refund: €" + refund )()
-                        
+                        println@Console( "[BANK] Partial refund: €" + refund )()
                     } else {
-                        // B: Penale supera cauzione -> Addebito extra
-                        extra = penaltyAmount - session.blockedAmount;
-                        
-                        if( currentBalance >= extra ) {
-                            global.balances.(session.userId) = currentBalance - extra;
-                            
-                            response.success = true;
-                            response.chargedAmount = penaltyAmount;
-                            response.receiptId = "RCP_PEN_" + session.userId;
-                            
-                            println@Console( "[BANK] Penalty charged with extra: €" + extra )()
-                        } else {
-                            // C: Insolvenza
-                            response.success = false;
-                            response.errorCode = "INSUFFICIENT_FUNDS";
-                            response.errorMessage = "Fondi insufficienti per la penale";
-                            
-                            println@Console( "[BANK]  Insolvency on penalty" )()
-                        }
+                        println@Console( "[BANK] Full deposit retained" )()
                     }
+                    
+                    response.success = true;
+                    response.chargedAmount = penaltyAmount;
+                    getCurrentTimeMillis@Time()( ts );
+                    response.receiptId = "RCP_PEN_" + session.userId + "_" + ts
                 }
             } ]
-            
         }; 
         
         println@Console( "[BANK] Session Closed for " + session.userId + "\n" )()

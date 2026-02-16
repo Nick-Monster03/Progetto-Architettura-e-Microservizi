@@ -1,2 +1,11 @@
 com/acme/delegates/BankPreAuthDelegate.class
+com/acme/delegates/BankCommitPenaltyDelegate.class
 com/acme/CamundaApplication.class
+com/acme/delegates/BankCancelAuthDelegate.class
+com/acme/delegates/StationUnlockDelegate.class
+com/acme/delegates/StationLockDelegate.class
+com/acme/delegates/FleetStopTrackingDelegate.class
+com/acme/delegates/FleetStartTrackingDelegate.class
+com/acme/delegates/extractTagValue.class
+com/acme/delegates/CalculatorDelegate.class
+com/acme/delegates/BankCommitPaymentDelegate.class

@@ -1,5 +1,6 @@
 package com.acme.delegates;
 
+import static com.acme.delegates.extractTagValue.*;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -23,6 +24,8 @@ public class BankPreAuthDelegate implements JavaDelegate {
     public void execute(DelegateExecution execution) throws Exception {
         
         String userId = (String) execution.getVariable("userId");
+        String card_number = (String) execution.getVariable("card_number");
+        boolean isRiservation = (boolean) execution.getVariable("isRiservation");
         log.info("=== [DELEGATE] Chiamata a Jolie Bank per UserID: {} ===", userId);
 
         String soapRequest = 
@@ -31,8 +34,8 @@ public class BankPreAuthDelegate implements JavaDelegate {
             "    <preAuthorize>\n" +
             "      <userId>" + userId + "</userId>\n" +
             "      <amount>10.0</amount>\n" +
-            "      <cardNumber>1234-5678</cardNumber>\n" +
-            "      <expiryTime>0</expiryTime>\n" +
+            "      <cardNumber>" + card_number + "</cardNumber>\n" +
+            "      <isRiservation>" + isRiservation + "</isRiservation>\n" +
             "    </preAuthorize>\n" +
             "  </SOAP-ENV:Body>\n" +
             "</SOAP-ENV:Envelope>";
@@ -46,14 +49,20 @@ public class BankPreAuthDelegate implements JavaDelegate {
             ResponseEntity<String> response = restTemplate.postForEntity(JOLIE_BANK_URL, request, String.class);
             String responseBody = response.getBody();
             log.info("Risposta da Jolie: {}", responseBody);
+           
 
             boolean success = responseBody != null && responseBody.contains(">true</success>");
             execution.setVariable("preAuthSuccess", success);
 
+
             if (success) {
                 String authToken = extractTagValue(responseBody, "authToken");
                 execution.setVariable("bankAuthToken", authToken);
-                log.info("PreAuth completata con Token: {}", authToken);
+                if(authToken != null && isRiservation){
+                    long reserveStartTime = System.currentTimeMillis();
+                    execution.setVariable("reserveStartTime", reserveStartTime);
+                } 
+                log.info("PreAuth SUCCESS - Token: {}", authToken);
             } else {
                 String errorMsg = extractTagValue(responseBody, "errorMessage");
                 execution.setVariable("preAuthErrorMessage", errorMsg != null ? errorMsg : "Errore generico Bank");
@@ -67,17 +76,4 @@ public class BankPreAuthDelegate implements JavaDelegate {
         }
     }
 
-    private String extractTagValue(String xml, String tag) {
-        String closeTag = "</" + tag + ">";
-        int end = xml.indexOf(closeTag);
-        if (end != -1) {
-            String openTagPrefix = "<" + tag; // Cerca l'inizio del tag
-            int start = xml.indexOf(openTagPrefix);
-            if (start != -1) {
-                int contentStart = xml.indexOf(">", start) + 1; // Salta fino alla fine degli attributi
-                return xml.substring(contentStart, end);
-            }
-        }
-        return null;
-    }
 }

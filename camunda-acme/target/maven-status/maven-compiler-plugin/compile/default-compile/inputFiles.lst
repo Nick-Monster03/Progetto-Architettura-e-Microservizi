@@ -1,2 +1,11 @@
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/BankCommitPaymentDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/FleetStartTrackingDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/CalculatorDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/StationLockDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/FleetStopTrackingDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/extractTagValue.java
 /home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/CamundaApplication.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/BankCommitPenaltyDelegate.java
 /home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/BankPreAuthDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/BankCancelAuthDelegate.java
+/home/nickmonster/Progetto-Architettura-e-Microservizi/camunda-acme/src/main/java/com/acme/delegates/StationUnlockDelegate.java

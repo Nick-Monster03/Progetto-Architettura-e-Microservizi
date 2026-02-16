@@ -2,6 +2,7 @@ type CalculatePriceRequest {
     .durationMinutes: double
     .kilometers: double
     .finalBatteryLevel: int  
+    .needsPenaltyTime: bool //indica se bisogna applicare il penalty de ritiro in ritardo
 }
 
 
@@ -10,8 +11,7 @@ type PriceBreakdown {
     .basePriceDistance: double  
     .subtotal: double           // basePriceTime + basePriceDistance
     .penalty: double           
-    .total: double              
-    .needsPenalty: bool         
+    .total: double                       
 }
 
 interface CostCalculatorInterface {
