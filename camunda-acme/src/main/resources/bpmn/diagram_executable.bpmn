@@ -118,14 +118,14 @@
 var elapsedMin = (new Date().getTime() - reserveStartTime) / 60000;
 
 var cancelRetainDeposit = false;
-if (elapsedMin &gt; 25) {
+if (elapsedMin &gt; 1.5) {
     cancelRetainDeposit = true;
     print("LATE CANCELLATION (&gt;" + elapsedMin + " min): Deposit will be retained");
 } else {
     print("On-time cancellation (" + elapsedMin + " min): Deposit will be refunded");
 }
 
-execution.setVariable("cancelRetainDeposit", cancelRetainDeposit);</bpmn:script>
+execution.setVariable("cancelisExpired", cancelRetainDeposit);</bpmn:script>
     </bpmn:scriptTask>
     <bpmn:sequenceFlow id="Flow_1n74wcf" sourceRef="Activity_0oxpocq" targetRef="Activity_0w6hqjh" />
     <bpmn:endEvent id="Event_1c17yt5">

@@ -28,6 +28,8 @@ camunda:
     # Auto-deploy dei processi BPMN dalla cartella resources/bpmn
     auto-deployment-enabled: true
     
+    client:
+      base-url: http://localhost:8080/engine-rest
     # Database
     database:
       schema-update: true
