@@ -57,7 +57,8 @@ public class BankCommitPaymentDelegate implements JavaDelegate {
             String responseBody = response.getBody();
             log.debug("DEBUG: Bank Service commitPayment");
             log.debug("Bank Service response: {}", responseBody);
-            boolean success = responseBody != null && responseBody.contains("<success>true</success>");
+            boolean success = responseBody != null && extractTagValue(responseBody, "success").equals("true");
+            
             execution.setVariable("paymentSuccess", success);
             log.info("DEBUG: Bank Service commitPayment - Success: {}", success);
             log.info("Bank Service response.success: {}", success);

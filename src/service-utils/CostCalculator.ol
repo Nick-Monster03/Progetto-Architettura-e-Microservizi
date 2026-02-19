@@ -17,7 +17,7 @@ service CostCalculator {
     init {
         
         //DEBUG
-        println@Console( "=== Calculator Service Initialization ===" )();
+        println@Console( "=== Calculator Service Initialization 2.0 ===" )();
         global.rates.timeRatePerMinute = 0.20;      // €0.20/min
         global.rates.distanceRatePerKm = 0.40;      // €0.40/km
         global.rates.batteryThreshold = 15;         // Soglia 15%
@@ -61,8 +61,8 @@ service CostCalculator {
             
             latePenalty = 0.0;
             if( needsPenaltyTime ) {
-                latePenalty = global.rates.latePenaltyAmount;
-                println@Console( "[CALCULATOR]   ⚠️  LATE PICKUP PENALTY: €" + latePenalty )()
+                latePenalty = 10.0; // Penale fissa di €10 per ritardo inferiore a 25min
+                println@Console( "[CALCULATOR]   LATE PICKUP PENALTY: €" + latePenalty )()
             };
             
             totalPenalty = batteryPenalty + latePenalty;

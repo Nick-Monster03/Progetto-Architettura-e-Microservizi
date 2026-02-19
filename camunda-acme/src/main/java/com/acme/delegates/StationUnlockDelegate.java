@@ -45,11 +45,11 @@ public class StationUnlockDelegate implements JavaDelegate {
             log.debug("DEBUG: Station Service UnLock");
             log.debug("Station Service Unlock response: {}", responseBody);
             
-            boolean success = responseBody != null && responseBody.contains("<success>true</success>");
+            boolean success = responseBody != null && extractTagValue(responseBody, "success").equals("true");
             execution.setVariable("unlockSuccess", success);
-            log.info("DEBUG: Station Service UnLock");
+            log.debug("DEBUG: Station Service UnLock");
             log.debug("Station Service response: {}", responseBody);
-            log.info("Station Service response.success: {}", success);
+            log.debug("Station Service response.success: {}", success);
             if (success) {
                 log.info("Vehicle unlocked");
             } else {

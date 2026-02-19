@@ -44,7 +44,7 @@ public class StationLockDelegate implements JavaDelegate {
             String responseBody = response.getBody();
             log.debug("DEBUG: Station Service Lock");
             log.debug("Station Service Lock response: {}", responseBody);
-            boolean success = responseBody != null && responseBody.contains("<success>true</success>");
+            boolean success = responseBody != null && extractTagValue(responseBody, "success").equals("true");
             log.info("DEBUG: Station Service Lock");
             log.info("Station Service response.success: {}", success);
             if (success) {

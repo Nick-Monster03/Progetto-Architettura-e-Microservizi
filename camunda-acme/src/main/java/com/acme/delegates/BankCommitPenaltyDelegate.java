@@ -43,7 +43,7 @@ public class BankCommitPenaltyDelegate implements JavaDelegate {
             ResponseEntity<String> response = restTemplate.postForEntity(JOLIE_BANK_URL, request, String.class);
             String responseBody = response.getBody();
             
-            boolean success = responseBody != null && responseBody.contains("<success>true</success>");
+            boolean success = responseBody != null && extractTagValue(responseBody, "success").equals("true");
             
             if (success) {
                 String receiptId = extractTagValue(responseBody, "receiptId");

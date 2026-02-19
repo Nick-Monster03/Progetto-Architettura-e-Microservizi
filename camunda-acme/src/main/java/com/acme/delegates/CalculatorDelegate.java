@@ -21,7 +21,10 @@ public class CalculatorDelegate implements JavaDelegate {
         Integer duration = (Integer) execution.getVariable("duration");
         Double kilometers = (Double) execution.getVariable("kilometers");
         Integer finalBattery = (Integer) execution.getVariable("finalBattery");
-        Double latePenalty = (Double) execution.getVariable("latePenalty");
+        Integer latePenalty = (Integer) execution.getVariable("latePenalty");
+        // log.debug("=== [CALCULATOR] latePenalty variable type: {} ===", 
+        //     latePenaltyObj != null ? latePenaltyObj.getClass().getName() : "null");
+        //Double latePenalty = latePenaltyObj != null ? ((Number) latePenaltyObj).doubleValue() : null;
         boolean needsPenaltyTime = (latePenalty != null && latePenalty > 0);
 
         log.info("=== [CALCULATOR] Duration: {}min | Km: {} | Battery: {}% ===", 

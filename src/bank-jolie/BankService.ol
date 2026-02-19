@@ -101,7 +101,7 @@ service BankService {
                         // Rimborso totale
                         currentBalance = global.balances.(session.userId);
                         global.balances.(session.userId) = currentBalance + session.blockedAmount;
-                        println@Console( "[BANK] Cancelled: Deposit released." )()
+                        println@Console( "[BANK] Cancelled: Deposit released.\n New balance: €" + global.balances.(session.userId) )()
                     }
                 }
                 sleep@Time( 2000 )() 
@@ -149,6 +149,7 @@ service BankService {
                             println@Console( "[BANK]  Insolvency on payment" )()
                         }
                     }
+                    println@Console( "[BANK] Saldo sul conto di " + session.userId + ": €" + global.balances.(session.userId) )()
                 }
             } ] 
             
@@ -173,7 +174,8 @@ service BankService {
                     response.success = true;
                     response.chargedAmount = penaltyAmount;
                     getCurrentTimeMillis@Time()( ts );
-                    response.receiptId = "RCP_PEN_" + session.userId + "_" + ts
+                    response.receiptId = "RCP_PEN_" + session.userId + "_" + ts;
+                    println@Console( "[BANK] Saldo sul conto di " + session.userId + ": €" + global.balances.(session.userId) )()
                 }
             } ]
         }; 

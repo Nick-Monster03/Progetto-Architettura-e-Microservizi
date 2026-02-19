@@ -51,7 +51,8 @@ public class BankPreAuthDelegate implements JavaDelegate {
             log.info("Risposta da Jolie: {}", responseBody);
            
 
-            boolean success = responseBody != null && responseBody.contains(">true</success>");
+            boolean success = responseBody != null && extractTagValue(responseBody, "success").equals("true");
+            
             execution.setVariable("preAuthSuccess", success);
 
 

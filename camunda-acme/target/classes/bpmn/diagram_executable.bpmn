@@ -41,7 +41,7 @@
       <bpmn:incoming>Flow_0u42zc6</bpmn:incoming>
       <bpmn:outgoing>Flow_0x7y2pb</bpmn:outgoing>
       <bpmn:timerEventDefinition id="TimerEventDefinition_0qanntz">
-        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT30M</bpmn:timeDuration>
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT2M</bpmn:timeDuration>
       </bpmn:timerEventDefinition>
     </bpmn:intermediateCatchEvent>
     <bpmn:serviceTask id="Activity_1cseyqq" name="commitPenalty" camunda:delegateExpression="${commitPenaltyDelegate}">
@@ -144,7 +144,7 @@ execution.setVariable("cancelRetainDeposit", cancelRetainDeposit);</bpmn:script>
 var elapsedMin = (new Date().getTime() - reserveStartTime) / 60000;
 
 var latePenalty = 0.0;
-if (elapsedMin &gt; 25 &amp;&amp; elapsedMin &lt;= 30) {
+if (elapsedMin &gt; 1.5 &amp;&amp; elapsedMin &lt;= 2) {
     latePenalty = 10.0;
     print("LATE PICKUP (" + elapsedMin + " min): €10 penalty will be added at end");
 } else {
