@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<wsdl:definitions targetNamespace="http://acme.com/calculator.wsdl" xmlns:xsd1="http://acme.com/calculator.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://acme.com/calculator.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+<wsdl:definitions targetNamespace="calculator.acme.com.wsdl" xmlns:xsd1="calculator.acme.com.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="calculator.acme.com.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
   <wsdl:types>
-    <xs:schema targetNamespace="http://acme.com/calculator.xsd" xmlns:sch="http://acme.com/calculator.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="calculateCost"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="needsPenaltyTime" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="durationMinutes" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="finalBatteryLevel" type="xs:int"/><xs:element maxOccurs="1" minOccurs="1" name="kilometers" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="calculateCostResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="total" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="subtotal" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="penalty" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="basePriceDistance" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="basePriceTime" type="xs:double"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+    <xs:schema targetNamespace="calculator.acme.com.xsd" xmlns:sch="calculator.acme.com.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="calculateCost"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="needsPenaltyTime" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="durationMinutes" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="finalBatteryLevel" type="xs:int"/><xs:element maxOccurs="1" minOccurs="1" name="kilometers" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="calculateCostResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="total" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="subtotal" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="penalty" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="basePriceDistance" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="basePriceTime" type="xs:double"/></xs:sequence></xs:complexType></xs:element></xs:schema>
   </wsdl:types>
   <wsdl:message name="CalculatePriceRequest">
     <wsdl:part name="body" element="xsd1:calculateCost">
@@ -33,7 +33,7 @@
   </wsdl:binding>
   <wsdl:service name="CalculatorPortService">
     <wsdl:port name="CalculatorPortServicePort" binding="tns:CalculatorPortSOAPBinding">
-      <soap:address location="socket://localhost:8089"/>
+      <soap:address location="http://localhost:8089"/>
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

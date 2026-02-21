@@ -7,7 +7,9 @@ service StationService {
 
     inputPort StationPort {
         Location: "socket://0.0.0.0:8083"
-        Protocol: soap
+        Protocol: soap{
+            .wsdl = "StationService.wsdl"
+        }
         Interfaces: StationInterface
     }
 

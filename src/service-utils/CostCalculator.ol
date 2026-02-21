@@ -7,7 +7,9 @@ service CostCalculator {
     
     inputPort CalculatorPort {
         Location: "socket://0.0.0.0:8089" 
-        Protocol: soap
+        Protocol: soap{
+            .wsdl = "CostCalculatorService.wsdl"
+        }
         Interfaces: CostCalculatorInterface
     }
 

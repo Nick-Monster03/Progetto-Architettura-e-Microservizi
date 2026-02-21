@@ -8,7 +8,9 @@ service BankService {
 
     inputPort BankPort {
         Location: "socket://0.0.0.0:8008"
-        Protocol: soap
+        Protocol: soap{
+            .wsdl = "BankService.wsdl",
+        }
         Interfaces: BankInterface
     }
 
