@@ -1,0 +1,114 @@
+(P)_ACME ::=
+
+/* --- RAMO 1: NOLEGGIO IMMEDIATO --- */
+startRental@User ;
+preAuthorize_OUT@Bank ;
+
+(
+    /* Caso Banca KO */
+    insufficientFunds@Bank ;
+    rentalFailed_OUT@User
+    +
+    /* Caso Banca OK */
+    authToken@Bank ;
+    unlock_OUT@Station ;
+    
+    (
+        /* Caso Stazione Guasta */
+        unlockFail@Station ;
+        cancelAuth_OUT@Bank ;
+        rentalFailed_OUT@User
+        +
+        /* Caso Stazione OK - Start Noleggio */
+        unlockAck@Station ;
+        startTracking_OUT@Fleet ;
+        trackingAck@Fleet ;
+        rentalStarted_OUT@User ;
+        
+        /* Loop Monitoraggio (ACME è attivo qui) */
+        ( getStatus_OUT@Fleet ; statusReport@Fleet )* ;
+        
+        /* Chiusura Noleggio */
+        endRental@User ;
+        lock_OUT@Station ;
+        lockAck@Station ;
+        stopTracking_OUT@Fleet ;
+        tripReport@Fleet ;
+        
+        /* Pagamento Finale */
+        commitPayment_OUT@Bank ;
+        (
+            /* Pagamento riuscito */
+            paymentReceipt@Bank ;
+            invoice_OUT@User
+            +
+            /* Pagamento fallito */
+            paymentFailed@Bank ;
+            paymentSollecit_OUT@User
+        )
+    )
+)
+
++
+
+/* --- RAMO 2: PRENOTAZIONE --- */
+reserve@User ;
+preAuthorize_OUT@Bank ;
+
+(
+    /* Caso Banca KO */
+    insufficientFunds@Bank ;
+    reservationFailed_OUT@User
+    +
+    /* Caso Banca OK */
+    authToken@Bank ;
+    reservationConfirmed_OUT@User ;
+    
+    /* SCELTA TRIPLA (ACME riceve da User o da Timer) */
+    (
+        /* B3: Cancellazione Utente */
+        cancelReservation@User ;
+        cancelAuth_OUT@Bank ;
+        cancellationConfirmed_OUT@User
+        +
+        /* B2: Timeout (Trigger ricevuto dal Timer) */
+        timeoutExpired@Timer ;
+        commitPenalty_OUT@Bank ;
+        penaltyReceipt@Bank ;
+        penaltyNotification_OUT@User
+        +
+        /* B1: Ritiro Veicolo */
+        confirmPickup@User ;
+        unlock_OUT@Station ;
+        
+        (
+            /* Stazione KO */
+            unlockFail@Station ;
+            cancelAuth_OUT@Bank ;
+            rentalFailed_OUT@User
+            +
+            /* Stazione OK - Flusso Standard */
+            unlockAck@Station ;
+            startTracking_OUT@Fleet ;
+            trackingAck@Fleet ;
+            rentalStarted_OUT@User ;
+            
+            ( getStatus_OUT@Fleet ; statusReport@Fleet )* ;
+            
+            endRental@User ;
+            lock_OUT@Station ;
+            lockAck@Station ;
+            stopTracking_OUT@Fleet ;
+            tripReport@Fleet ;
+            
+            commitPayment_OUT@Bank ;
+            (
+                paymentReceipt@Bank ;
+                invoice_OUT@User
+                +
+                paymentFailed@Bank ;
+                paymentSollecit_OUT@User
+            )
+        )
+    )
+)

@@ -8,7 +8,6 @@ service BatteryService {
         // Usa 0.0.0.0 per essere raggiungibile dagli altri container (fix Docker)
         Location: "socket://0.0.0.0:8085"
         
-        // Usa SOAP come richiesto dalla traccia del progetto
         Protocol: soap {
             .wsdl = "./BatteryService.wsdl";
             .wsdl.port = "BatteryServicePort";
@@ -16,23 +15,33 @@ service BatteryService {
         }
         Interfaces: BatteryInterface
     }
-    
+
     init {
-        // Dati iniziali
-        global.batteries.("v-test") = 100
+        
+        global.vehicles.("car1").battery = 76;
+        global.vehicles.("car2").battery = 80;
+        global.vehicles.("car3").battery = 100;
+        println@Console("Battery Service avviato su porta 8085 (SOAP)")()
     }
+    
 
     main {
         [ updateBattery( request )( response ) {
-            global.batteries.(request.vehicleId) = request.level;
+            synchronized( batteryLock ) {
+                global.vehicles.(request.vehicleId).battery = request.level
+            };
             println@Console("[BATTERY] Aggiornata " + request.vehicleId + ": " + request.level + "%")()
         } ]
 
-        [ getBattery( request )( level ) {
-            if ( is_defined( global.batteries.(request.vehicleId) ) ) {
-                level = global.batteries.(request.vehicleId)
-            } else {
-                level = 100 
+        [ getBattery( request )( response ) {
+            synchronized( batteryLock ) {
+                if ( is_defined( global.vehicles.(request.vehicleId).battery ) ) {
+                    response.level = global.vehicles.(request.vehicleId).battery
+                    println@Console("[BATTERY] GetBattery per " + request.vehicleId + ": " + response.level + "%")()
+                } else {
+                    println@Console("[BATTERY] GetBattery per " + request.vehicleId + ": Veicolo non trovato, restituisco 100%")()
+                    response.level = 100 
+                }
             }
         } ]
     }

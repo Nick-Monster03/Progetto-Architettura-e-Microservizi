@@ -1,0 +1,32 @@
+(P)_Station ::=
+
+/* --- RAMO 1: NOLEGGIO IMMEDIATO --- */
+unlock@ACME ;
+(
+    unlockFail_OUT@ACME
+    +
+    unlockAck_OUT@ACME ;
+    lock@ACME ;
+    lockAck_OUT@ACME
+)
+
++
+
+/* --- RAMO 2: PRENOTAZIONE --- */
+(
+    /* B3: Cancellazione (La stazione non fa nulla) */
+    1
+    +
+    /* B2: Timeout (La stazione non fa nulla) */
+    1
+    +
+    /* B1: Ritiro (La stazione agisce) */
+    unlock@ACME ;
+    (
+        unlockFail_OUT@ACME
+        +
+        unlockAck_OUT@ACME ;
+        lock@ACME ;
+        lockAck_OUT@ACME
+    )
+)

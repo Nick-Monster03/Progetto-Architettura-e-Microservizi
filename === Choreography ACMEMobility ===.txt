@@ -92,8 +92,8 @@
             
             +
             
-            /* B2: Timeout No-Show (Gestito internamente da ACME che sveglia il flusso) */
-            timeoutNoShow:ACME -> ACME ; /* Internal signal simulation */
+            /* B2: Il timeout nel caso di scadenza dei 25 è gestito internamente */
+            timeoutExpired:Timer -> ACME ;
             commitPenalty:ACME -> Bank ;
             penaltyReceipt:Bank -> ACME ;
             penaltyNotification:ACME -> User
@@ -108,7 +108,7 @@
                 /* Stazione KO */
                 unlockFail:Station -> ACME ;
                 cancelAuth:ACME -> Bank ;
-                error:ACME -> User
+                rentalFailed:ACME -> User
                 
                 +
                 
