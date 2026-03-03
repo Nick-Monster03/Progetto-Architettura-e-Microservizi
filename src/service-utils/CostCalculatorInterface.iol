@@ -1,5 +1,5 @@
 type CalculateRequest {
-    minutes: int
+    minutes: long
     batteryLevel: int
 }
 type CalculateResponse {

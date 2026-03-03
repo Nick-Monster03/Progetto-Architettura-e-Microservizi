@@ -7,56 +7,148 @@ service BankService {
     execution: concurrent
 
     inputPort BankPort {
-        location: "socket://localhost:8008"
+        location: "socket://0.0.0.0:8008"
+        
         protocol: soap {
-            .wsdl = "./BankService.wsdl";      
+            .wsdl = "./BankService.wsdl";
             .wsdl.port = "BankPortServicePort";
             .dropRootValue = true
         }
         interfaces: BankInterface
     }
 
+    // Correlation Set: lega il paymentToken generato in 'preAuthorize' 
+    // a quello ricevuto in 'commitPayment'
     cset {
         paymentToken: PaymentRequest.paymentToken
     }
 
-    // embed Console as Console 
-    // embed Time as Time
+    // --- LOGICA DI BUSINESS ---
+
+    init {
+        // Inizializzazione Database Utenti fittizio
+        global.users[0].name = "Mario";
+        global.users[0].balance = 1000.0;
+        global.users[0].state = "active";
+        
+        global.users[1].name = "Luigi";
+        global.users[1].balance = 5.0;
+        global.users[1].state = "active";
+        
+        global.users[2].name = "Wario";
+        global.users[2].balance = 10000.0;
+        global.users[2].state = "active";
+
+        global.users[3].name = "Waluigi";
+        global.users[3].balance = 500.0; 
+        global.users[3].state = "suspended";
+        
+        global.CAUZIONE_STD = 10.0
+    }
 
     main {
+        // Fase 1: Pre-autorizzazione (apre la sessione)
         preAuthorize( request )( response ) {
-            response.paymentToken = new;
+            client = request.clientName;
             
-            csets.paymentToken = response.paymentToken;
-             
-            response.success = true;
-            response.message = "Pre-auth OK";
+            install(InsufficientFunds =>
+                println@Console("FAIL: Non ci sono abbastanza fondi: " + client)()
+            );
 
-            println@Console( "--- [NEW SESSION] RICHIESTA RICEVUTA ---" )();
-            println@Console( "Cliente: " + request.clientName )();
-            println@Console( "Token (SID): " + response.paymentToken )()
+            install( AccountSuspended => 
+                println@Console("FAIL: Utente sospeso: " + client)()
+            );    
+        
+            synchronized( balanceLock ) {
+                // Ricerca utente
+                userIndex = -1; // Default not found
+                for( i=0, i<#global.users, i++ ) {
+                    if ( global.users[i].name == client ) {
+                        userIndex = i
+                    }
+                };
+                
+                // Se utente non trovato o sospeso
+                if ( userIndex == -1 || global.users[userIndex].state == "suspended" ) {
+                     with( error ) { 
+                        .message = "Account inesistente o bloccato." 
+                     };
+                     throw( AccountSuspended, error )
+                };
+                
+                currentBalance = global.users[userIndex].balance;
+                
+                if ( currentBalance < global.CAUZIONE_STD ) {
+                    with( error ) { .message = "Fondi insufficienti. Saldo: " + currentBalance};
+                    throw( InsufficientFunds, error )
+                } else {
+                    // Blocco cauzione
+                    global.users[userIndex].balance = currentBalance - global.CAUZIONE_STD
+                }
+            };
+
+            // Setup Sessione
+            sessionUserIndex = userIndex;
+            amountBlocked = global.CAUZIONE_STD; 
+            sessionUserName = client; 
+
+            response.paymentToken = new;
+            csets.paymentToken = response.paymentToken; 
+
+            response.success = true;
+            response.message = "Pre-auth OK"
         };
 
-        amountBlocked = 10.0; 
-        println@Console( "Stato Sessione: Bloccati " + amountBlocked + " EUR. In attesa di PaymentRequest..." )();
-
-        commitPayment( request )( response ) {
+        // Fase 2: Conferma Pagamento
+        [ commitPayment( request )( response ) {
             undef(response);
-            println@Console( "--- [RESUME SESSION] PAGAMENTO RICEVUTO ---" )();
-            println@Console( "Token ricevuto: " + request.paymentToken )();
             
-            if ( request.amount <= amountBlocked ) {
-                diff = amountBlocked - request.amount;
-                response.success = true;
-                response.message = "Pagamento OK. Rilascio: " + diff
-            } else {
-                extra = request.amount - amountBlocked;
-                response.success = true;
-                response.message = "Pagamento OK. Addebito extra: " + extra
+            install( PaymentRefused => 
+                println@Console( "FAIL: Pagamento rifiutato per " + sessionUserName + ": " + PaymentRefused.message )()
+            );
+
+            synchronized( balanceLock ) {
+                current = global.users[sessionUserIndex].balance;
+
+                if ( request.amount <= global.CAUZIONE_STD ) {
+                    // Rimborso parziale
+                    diff = amountBlocked - request.amount;
+                    global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance + diff;
+                    
+                    response.success = true;
+                    response.message = "Pagamento OK ("+request.amount+"). Rimborsati: " + diff
+                } else {
+                    // Addebito extra
+                    extra = request.amount - global.CAUZIONE_STD;
+                    
+                    if ( current < extra ) { 
+                        global.users[sessionUserIndex].state = "suspended";
+                        with( error ) { 
+                            .message = "Pagamento Rifiutato. Saldo insufficiente per extra: " + extra 
+                        };
+                        println@Console( "FAIL: " + error.message )();
+                        throw( PaymentRefused, error )
+                    };
+                    
+                    global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance - extra;
+                    
+                    response.success = true;
+                    response.message = "Pagamento OK ("+request.amount+"). Addebito extra: " + extra
+                }
             };
+
             response.txId = "TX-" + request.paymentToken;
-            println@Console( response.message )();
-            sleep@Time( 500 )()
-        }
+            println@Console( response.message )()
+        } ]
+
+        // Fase 3: Annullamento (es. errore stazione)
+        [ cancelAuth( request ) ]{
+            println@Console( "--- Annullamento per " + sessionUserName )();
+            
+            synchronized( balanceLock ) {
+                global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance + amountBlocked;
+                println@Console( "Cauzione sbloccata (" + amountBlocked + "). Nuovo saldo: " + global.users[sessionUserIndex].balance )()
+            }
+        } 
     }
 }

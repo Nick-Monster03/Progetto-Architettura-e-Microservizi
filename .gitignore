@@ -1,0 +1,11 @@
+# Ignora le librerie pesanti di Node.js
+node_modules/
+src/client-app/node_modules/
+
+# Ignora i file di sistema e log
+.DS_Store
+*.log
+
+# Ignora le impostazioni locali dell'editor
+.vscode/
+.idea/
