@@ -1,100 +1,129 @@
 include "console.iol"
 include "time.iol"
-include "math.iol"
-include "../fleet-management/tracking/TrackingInterface.iol"
-include "../fleet-management/battery/BatteryInterface.iol"
+include "fleet-management/tracking/TrackingInterface.iol"
+include "fleet-management/battery/BatteryInterface.iol"
+include "SimulatorInterface.iol"
+
 
 service SimulatorService {
-    
-    // Porte per comunicare con i servizi di Tracking e Battery
-    outputPort Tracking {
-        Location: "socket://localhost:8084" 
-        Protocol: sodep
+
+    execution: concurrent
+
+    inputPort SimulatorPort {
+        Location: "socket://0.0.0.0:8086"
+        Protocol: soap { .dropRootValue = true }
+        Interfaces: SimulatorInterface
+    }
+
+    outputPort TrackingClient {
+        Location: "socket://tracking-service:8084"
+        Protocol: soap { .dropRootValue = true }
         Interfaces: TrackingInterface
     }
 
-    outputPort Battery {
-        Location: "socket://localhost:8085" 
-        Protocol: sodep
+    outputPort BatteryClient {
+        Location: "socket://battery-service:8085"
+        Protocol: soap { .dropRootValue = true }
         Interfaces: BatteryInterface
     }
 
     init {
-        // Definizione coordinate delle stazioni fisse per la simulazione del percorso
-        global.stations[0].lat = 41.1222;
-        global.stations[0].lon = 16.8715; 
-        global.stations[1].lat = 41.1171;
-        global.stations[1].lon = 16.8719; 
-        global.stations[2].lat = 41.1250;
-        global.stations[2].lon = 16.8800; 
-        
-        println@Console("[SIM] Simulatore Avviato su Bari.")()
+        //DEBUG
+        println@Console("=== SIMULATORE TRAFFICO (GPS + BATTERIA) AVVIATO ===")()
+        // println@Console("[SIM] In attesa di comando startSimulation...")();
     }
 
     main {
-        // Loop infinito di simulazione
-        while( true ) {
-            // 1. Recupera la lista di tutti i veicoli dal servizio Tracking
-            getVehicleList@Tracking()( list );
+        [ startSimulation( request )] {
+            println@Console("[SIM] Ricevuto comando START per veicolo: " + request.vehicleId)();
             
-            // 2. Itera su ogni veicolo
-            for ( i = 0, i < #list.vehicles, i++ ) {
-                vid = list.vehicles[i].vehicleId;
-                status = list.vehicles[i].status;
-                
-                // 3. Simula movimento solo se il veicolo è NOLEGGIATO
-                if ( status == "RENTED" ) {
-                    
-                    // A. Assegna una destinazione casuale se non ne ha già una
-                    if ( !is_defined( global.sim_state.(vid).dest_lat ) ) {
-                        random@Math()( r );
-                        dest_idx = int(r * 3); // Sceglie a caso tra 0, 1 e 2
-                        global.sim_state.(vid).dest_lat = global.stations[dest_idx].lat;
-                        global.sim_state.(vid).dest_lon = global.stations[dest_idx].lon;
-                        println@Console("[SIM] " + vid + " viaggia verso Stazione " + dest_idx)()
-                    };
-
-                    // B. Calcolo vettoriale per spostamento lineare verso la destinazione
-                    cur_lat = list.vehicles[i].location.latitude;
-                    cur_lon = list.vehicles[i].location.longitude;
-                    dest_lat = global.sim_state.(vid).dest_lat;
-                    dest_lon = global.sim_state.(vid).dest_lon;
-
-                    delta_lat = dest_lat - cur_lat;
-                    delta_lon = dest_lon - cur_lon;
-                    
-                    // Calcolo nuova posizione (avanzamento del 10% della distanza rimanente)
-                    newLat = cur_lat + (delta_lat * 0.1);
-                    newLon = cur_lon + (delta_lon * 0.1);
-
-                    // C. Invia aggiornamento posizione al servizio Tracking
-                    updateLocation@Tracking({ 
-                        .vehicleId = vid, 
-                        .location.latitude = newLat, 
-                        .location.longitude = newLon 
-                    })();
-
-                    // D. Simula consumo batteria (decremento 1%)
-                    getBattery@Battery({ .vehicleId = vid })( batt );
-                    if ( batt > 0 ) {
-                        newBatt = batt - 1;
-                        updateBattery@Battery({ .vehicleId = vid, .level = newBatt })()
-                    };
-
-                    // E. Controllo arrivo a destinazione (se vicino, resetta destinazione)
-                    abs@Math( delta_lat )( abs_lat );
-                    abs@Math( delta_lon )( abs_lon );
-                    
-                    if ( abs_lat < 0.0001 && abs_lon < 0.0001 ) {
-                        println@Console("[SIM] " + vid + " ARRIVATO! Cambio destinazione.")();
-                        undef( global.sim_state.(vid) ) // Rimuove stato per scegliere nuova meta al prossimo giro
-                    } else {
-                        println@Console("[SIM] " + vid + " moving... Bat: " + newBatt + "%")()
-                    }
-                }
+            synchronized( simLock ) {
+                if ( !global.simulationRunning.( request.vehicleId ) ) {
+                    global.simulationRunning.( request.vehicleId ) = true
+                } 
             };
-            // Pausa tra ogni ciclo di simulazione
-            sleep@Time( 3000 )() 
-        }
+
+            if ( global.simulationRunning.( request.vehicleId ) ) {
+                // Avvio il ciclo di simulazione
+                sleep@Time( 7000 )();
+                while( global.simulationRunning.( request.vehicleId ) ) {
+                    
+                    scope( sim_car ) {
+                        install( 
+                            default => 
+                                println@Console(" [SIM] ERRORE: " + sim_car.default )();
+                                if( is_defined( sim_car.default.message ) ) {
+                                    println@Console(" [SIM] Dettaglio: " + sim_car.default.message )()
+                                }
+                        );
+                        
+                        vid = request.vehicleId;
+                        println@Console("[SIM] Simulazione in corso per veicolo: " + vid)();
+                        getInfo@TrackingClient( { .vehicleId = vid } )( info );
+                        getBattery@BatteryClient( { .vehicleId = vid } )( batResp );
+                        println@Console("[SIM] Dati attuali -> KM: " + info.totalKm + ", Bat: " + batResp.level + "%")();
+                        
+                        newLat = info.location.latitude + 0.001;
+                        updateLocationRequest.vehicleId = vid;
+                        updateLocationRequest.location.latitude = double( newLat );
+                        updateLocationRequest.location.longitude = double( info.location.longitude );
+                        updateLocation@TrackingClient( updateLocationRequest )();
+                        
+                        if ( batResp.level > 0 ) {
+                            newBat = batResp.level - 1;
+                            
+                            batRequest.vehicleId = vid; 
+                            batRequest.level = int(newBat);
+                            println@Console("[SIM] Aggiorno batteria per " + vid + " a " + int(newBat) + "%")();
+                            updateBattery@BatteryClient( batRequest )();
+                            sleep@Time( 7000 )() 
+
+                        } else {
+                            println@Console(" [SIM] BATTERIA SCARICA - Simulazione terminata")();
+                            global.simulationRunning.( request.vehicleId ) = false
+                        }
+                    }
+                
+                }
+            }
+            undef(request)
+        } 
+
+        [ stopSimulation( request )( response ) {
+            println@Console("[SIM] Ricevuto comando STOP per veicolo: " + request.vehicleId)();
+            
+            synchronized( simLock ) {
+                if ( global.simulationRunning.( request.vehicleId ) ) {
+                    global.simulationRunning.( request.vehicleId ) = false;
+                    
+                    // Recupero i dati finali dal Tracking e Battery Service
+                    vid = request.vehicleId;
+                    getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
+                    getBattery@BatteryClient( { .vehicleId = vid } )( batInfo );
+                    
+                    // Costruisco la risposta con tutti i dati
+                    response.vehicleId = vid;
+                    response.location.latitude = trackInfo.location.latitude;
+                    response.location.longitude = trackInfo.location.longitude;
+                    response.status = trackInfo.status;
+                    response.totalKm = trackInfo.totalKm;
+                    response.level = batInfo.level;
+                    
+                    println@Console("[SIM] Dati finali -> KM: " + response.totalKm + ", Bat: " + response.level + "%")()
+                } else {
+                    // Se non c'è simulazione attiva, restituisco comunque i dati correnti
+                    vid = request.vehicleId;
+                    getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
+                    getBattery@BatteryClient( { .vehicleId = vid } )( batInfo );
+                    
+                    response.vehicleId = vid;
+                    response.location.latitude = trackInfo.location.latitude;
+                    response.location.longitude = trackInfo.location.longitude;
+                    response.status = trackInfo.status;
+                    response.totalKm = trackInfo.totalKm;
+                    response.level = batInfo.level
+                }
+            }
+        } ]
     }
 }

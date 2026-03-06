@@ -1,147 +1,168 @@
 include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
+include "../../simulation/SimulatorInterface.iol"
+from time import Time
 from console import Console
 
 service FleetGateway {
     execution: concurrent
 
-    // Configurazione porta HTTP pubblica (REST API)
-    inputPort FleetPublicPort {
-        Location: "socket://0.0.0.0:8082"    
+    inputPort GatewayPort {
+        Location: "socket://0.0.0.0:8082"
         Protocol: http { 
             .format = "json";
-            // Mappatura metodi HTTP alle operazioni Jolie
             .osc.startTracking.method = "post";
             .osc.registerUser.method = "post";
             .osc.stopTracking.method = "post";
             .osc.bookVehicle.method = "post";
             .osc.getStatus.method = "get";
             .osc.getMap.method = "get";
-            
-            // --- Gestione CORS per chiamate da browser ---
-            .osc.handleOptions.method = "options";
-            .default = "handleOptions"; // Gestisce tutte le richieste non mappate (es. preflight)
-            .response.headers.("Access-Control-Allow-Origin") = "*";
-            .response.headers.("Access-Control-Allow-Methods") = "GET, POST, OPTIONS, PUT, DELETE";
-            .response.headers.("Access-Control-Allow-Headers") = "Content-Type"
         }
         Interfaces: FleetInterface
     }
 
-    // Collegamenti ai microservizi interni
-    outputPort Tracking {
+    embed Console as Console
+
+    outputPort TrackingClient {
         Location: "socket://tracking-service:8084" 
-        Protocol: sodep
+        Protocol: soap { .dropRootValue = true }
         Interfaces: TrackingInterface
     }
 
-    outputPort Battery {
-        Location: "socket://battery-service:8085" 
-        Protocol: sodep
+    outputPort BatteryClient {
+        Location: "socket://battery-service:8085"
+        Protocol: soap { .dropRootValue = true }
         Interfaces: BatteryInterface
     }
- 
-    embed Console as Console
 
+    outputPort SimulatorClient {
+        Location: "socket://simulator-service:8086" 
+        Protocol: soap { .dropRootValue = true }
+        Interfaces: SimulatorInterface
+    }
+   
+    init {
+        // Dati iniziali (Bari)
+        global.vehicles.("car1").lat = 41.1171;
+        global.vehicles.("car1").lon = 16.8719;
+        global.vehicles.("car1").status = "AVAILABLE";
+        global.vehicles.("car1").totalKm = 0.0;
+        global.vehicles.("car1").battery = 76;
+
+        global.vehicles.("car2").lat = 41.1222;
+        global.vehicles.("car2").lon = 16.8715;
+        global.vehicles.("car2").status = "AVAILABLE";
+        global.vehicles.("car2").totalKm = 0.0;
+        global.vehicles.("car2").battery = 80;
+
+        global.vehicles.("car3").lat = 41.1200;
+        global.vehicles.("car3").lon = 16.8700;
+        global.vehicles.("car3").status = "AVAILABLE";
+        global.vehicles.("car3").totalKm = 0.0;
+        global.vehicles.("car3").battery = 100;
+        println@Console("Fleet Gateway avviato su porta 8082 (REST)")()
+    }
+
+    
     main {
-        
-        // Avvia il monitoraggio (cambia stato veicolo a RENTED)
+
         [ startTracking( request )( response ) {
-            if ( is_defined( request.vehicleId ) ) {
-                println@Console("[GATEWAY] Start Tracking: " + request.vehicleId)();
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RENTED" } )();
-                response.success = true;
-                response.message = "Monitoraggio avviato"
-            } else {
-                // Gestione errore input
-                println@Console("[GATEWAY] Errore startTracking: vehicleId mancante!")();
-                response.success = false;
-                response.message = "Errore: Parametro 'vehicleId' obbligatorio."
-            }
-        } ]
+            vid = request.vehicleId;
+            uid = request.userId;
+            println@Console("START del Tracking -> Veicolo: " + vid + ", User: " + uid)();
 
-        // Termina il noleggio e recupera info finali
-        [ stopTracking( request )( response ) {
-            if ( is_defined( request.vehicleId ) ) {
-                println@Console("[GATEWAY] Stop Tracking: " + request.vehicleId)();
+            // Controllo se il veicolo è già in noleggio
+            if ( is_defined( global.vehicles.(vid).status ) && global.vehicles.(vid).status == "RENTAL" ) {
+                response.success = false;
+                response.message = "Veicolo già in noleggio";
+                println@Console(" > ERRORE: Veicolo " + vid + " è già in stato RENTAL")()
+            } else {
+                getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
                 
-                // Aggiorna stato e recupera info e batteria
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "AVAILABLE" } )();
-                getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
-                getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
+                getBattery@BatteryClient( { .vehicleId = vid } )( batInfo );
+                println@Console("Dati iniziali per " + vid + ": KM=" + trackInfo.totalKm + ", Bat=" + batInfo.level + "%")();
+                synchronized( sessionLock ) {
+                    global.active_rentals.(vid).startKm = trackInfo.totalKm;
+                    global.active_rentals.(vid).startBattery = batInfo.level;
+                    global.vehicles.(vid).status = "RENTAL";
+                    println@Console(" > Sessione salvata: startKm=" + trackInfo.totalKm + ", startBat=" + batInfo.level)()
+                };
+
+                sim_request.vehicleId = vid;
+                startSimulation@SimulatorClient( sim_request );
+                println@Console("Simulazione avviata")();
 
                 response.success = true;
-                response.message = "Noleggio terminato. Bat: " + batt + "%"
-            } else {
-                println@Console("[GATEWAY] Errore stopTracking: vehicleId mancante!")();
-                response.success = false;
-                response.message = "Errore: Parametro 'vehicleId' obbligatorio per terminare il noleggio."
+                response.message = "Tracking avviato"
             }
         } ]
 
-        // Aggrega dati da Tracking e Battery per fornire stato completo
+        [ stopTracking( request )( response ) {
+            vid = request.vehicleId;
+            uid = request.userId;
+            println@Console("STOP Tracking -> Veicolo: " + vid + ", User: " + uid)();
+
+            // Controllo se il veicolo è effettivamente in noleggio
+            if ( !is_defined( global.vehicles.(vid).status ) || global.vehicles.(vid).status != "RENTAL" ) {
+                response.success = false;
+                response.message = "Veicolo non in noleggio";
+                response.kilometers = 0.0;
+                response.batteryConsumed = 0.0;
+                response.finalBattery = 0;
+                println@Console(" > ERRORE: Veicolo " + vid + " non è in stato RENTAL")()
+            } else {
+                sim_request.vehicleId = vid;
+                stopSimulation@SimulatorClient( sim_request )( simStopResp );
+                println@Console("Simulazione fermata - Dati finali ricevuti")()
+
+                deltaKm = 0.0;
+                deltaBat = 0.0;
+
+                synchronized( sessionLock ) {
+                    if ( is_defined( global.active_rentals.(vid) ) ) {
+                        startK = global.active_rentals.(vid).startKm;
+                        startB = global.active_rentals.(vid).startBattery;
+
+                        deltaKm = simStopResp.totalKm - startK;
+                        deltaBat = double(startB - simStopResp.level); 
+                        
+                        undef( global.active_rentals.(vid) );
+                        global.vehicles.(vid).status = "AVAILABLE"
+                    } else {
+                        println@Console("WARN: Nessuna sessione attiva trovata per " + vid)();
+                        global.vehicles.(vid).status = "AVAILABLE"
+                    }
+                };
+
+                response.success = true;
+                response.message = "Noleggio terminato";
+                response.kilometers = deltaKm;
+                response.batteryConsumed = deltaBat;
+                response.finalBattery = simStopResp.level;
+                
+                println@Console(" > Report: KM=" + deltaKm + ", BatCons=" + deltaBat)()
+            }
+        } ]
+
         [ getStatus( request )( response ) {
-            if ( is_defined( request.vehicleId ) ) {
-                getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
-                getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
+            vid = request.vehicleId;
+            
+            println@Console("[GW] Chiamo TrackingService...")()
+            getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
+            println@Console("[GW] Tracking ha risposto!")()
+            println@Console("[GW] Chiamo BatteryService...")()
+            getBattery@BatteryClient( { .vehicleId = vid } )( batLevel );
+            println@Console("[GW] Battery ha risposto: " + batLevel.level + "%")()
 
-                response.vehicleId = request.vehicleId;
-                response.status = info.status;
-                response.latitude = info.location.latitude;
-                response.longitude = info.location.longitude;
-                response.batteryLevel = batt
-            } else {
-                // Risposta di default in caso di errore
-                println@Console("[GATEWAY] Errore getStatus: vehicleId mancante!")();
-                response.vehicleId = "UNKNOWN";
-                response.status = "ERROR_MISSING_ID";
-                response.batteryLevel = -1 
-            }
+            response.vehicleId = vid;
+            response.batteryLevel = batLevel.level;
+            response.latitude = trackInfo.location.latitude;
+            response.longitude = trackInfo.location.longitude;
+            response.status = trackInfo.status;
+            println@Console("GetStatus per veicolo " + vid + ": Bat=" + batLevel.level + ", Loc=(" + response.latitude + "," + response.longitude + "), Status=" + response.status )()
         } ]
 
-        // Logica semplice di prenotazione
-        [ bookVehicle( request )( response ) {
-            if ( is_defined( request.vehicleId ) ) {
-                println@Console("[GATEWAY] Richiesta Prenotazione: " + request.vehicleId)();
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RESERVED" } )();
-                response.success = true;
-                response.message = "Veicolo prenotato con successo per 30 minuti."
-            } else {
-                response.success = false;
-                response.message = "Errore: ID Veicolo mancante."
-            }
-        } ]
-
-        // Registrazione utente in memoria (non persistente al riavvio del servizio)
-        [ registerUser( request )( response ) {
-            if ( is_defined( request.username ) && is_defined( request.password ) ) {
-                if ( is_defined( global.users.(request.username) ) ) {
-                    response.success = false;
-                    response.message = "Errore: L'utente " + request.username + " esiste già!"
-                } else {
-                    global.users.(request.username) = request.password;
-                    println@Console("[GATEWAY] Nuovo utente registrato: " + request.username)();
-                    
-                    response.success = true;
-                    response.message = "Registrazione avvenuta con successo!"
-                }
-            } else {
-                response.success = false;
-                response.message = "Dati mancanti (username o password)."
-            }
-        } ]
-
-        // Proxy verso Tracking per ottenere la mappa completa dei veicoli
-        [ getMap( request )( response ) {
-            getVehicleList@Tracking()( trackingData );
-            // Proiezione dei dati della struttura trackingData nella risposta
-            response.vehicles -> trackingData.vehicles
-        } ]
-
-        // Gestione richieste OPTIONS per CORS (necessario per browser)
-        [ handleOptions( request )( response ) {
-            nullProcess 
-        } ]
+        
     }
 }

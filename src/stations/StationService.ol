@@ -1,75 +1,129 @@
-include "StationInterface.iol"
 include "console.iol"
+include "StationInterface.iol"
 
-service StationService {
-
-    // Esecuzione concorrente per servire più client simultaneamente
-    execution: concurrent
-
-    // Definizione del Correlation Set per la sessione
-    // Collega il SID generato nella risposta di 'unlock' al SID richiesto in 'lock'
-    cset {
-        sid: UnlockResponse.sid LockRequest.sid
-    }
+service StationService {   
+    
+    execution: concurrent 
 
     inputPort StationPort {
         Location: "socket://0.0.0.0:8083"
-        Protocol: soap {
-            .wsdl = "./StationService.wsdl";
-            .wsdl.port = "StationPortServicePort";
-            .dropRootValue = true
+        Protocol: soap{
+            .wsdl = "StationService.wsdl"
         }
         Interfaces: StationInterface
     }
 
+    /* STATO DEI VEICOLI (Simulato) */
     init {
-        // Inizializzazione dati di test (Debug)
-        global.station_vehicles.("v-test").locked = true
-        global.station_vehicles.("v-test").station = "Stazione-Termini"
-        println@Console("Station Service (SOAP) avviato sulla porta 8083")()
+        // Inizializzazione stazioni con veicoli (corrispondenti al Fleet)
+        
+        // Stazione 1
+        global.stations.station1.stationId = "station1";
+        global.stations.station1.vehicles.car1.vehicleId = "car1";
+        global.stations.station1.vehicles.car1.status = "AVAILABLE";
+        global.stations.station1.vehicles.car1.battery = 76.0;
+        
+        // Stazione 2
+        global.stations.station2.stationId = "station2";
+        global.stations.station2.vehicles.car2.vehicleId = "car2";
+        global.stations.station2.vehicles.car2.status = "AVAILABLE";
+        global.stations.station2.vehicles.car2.battery = 80.0;
+        
+        // Stazione 3
+        global.stations.station3.stationId = "station3";
+        global.stations.station3.vehicles.car3.vehicleId = "car3";
+        global.stations.station3.vehicles.car3.status = "AVAILABLE";
+        global.stations.station3.vehicles.car3.battery = 100.0;
+        
+        // Manteniamo anche global.vehicles per compatibilità con unlock/lock esistenti
+        global.vehicles.car1 << global.stations.station1.vehicles.car1;
+        global.vehicles.car2 << global.stations.station2.vehicles.car2;
+        global.vehicles.car3 << global.stations.station3.vehicles.car3;
+
+        println@Console( "Station Service avviato (Porta 8083)" )()
     }
 
     main {
+        
+        // OPERAZIONE UNLOCK
+        [ unlock( request )( response ) {
+            vid = request.vehicleId;
+            println@Console( "Richiesta UNLOCK per veicolo: " + vid )();
 
-        // Operazione 'unlock': Inizia una sessione di noleggio
-        unlock( request )( response ) {
-            id = request.vehicleId;
-            println@Console( "[UNLOCK-REQ] Veicolo: " + id + " Utente: " + request.userId )();
-            
-            // Blocco sincronizzato per evitare race condition sullo stato globale dei veicoli
-            synchronized( lock ) {
-                // Se il veicolo non esiste, lo creiamo in una stazione fittizia
-                if ( !is_defined( global.station_vehicles.(id) ) ) {
-                     global.station_vehicles.(id).station = "Stazione-Virtuale"
-                };
-                
-                // Imposta lo stato a sbloccato
-                global.station_vehicles.(id).locked = false;
-                
-                // Genera un nuovo ID di sessione (SID) per questo noleggio
-                csets.sid = new;
-                response.sid = csets.sid;
-                
-                response.success = true;
-                response.message = "Veicolo sbloccato correttamente."
+            synchronized( lockManager ) {
+                if ( !is_defined( global.vehicles.(vid) ) ) {
+                    // FAULT: Veicolo non esiste
+                    with( error ) { .message = "Veicolo " + vid + " non trovato in stazione" };
+                    throw( VehicleNotFoundFault, error )
+                }
+                else if ( global.vehicles.(vid).status == "BROKEN" ) {
+                    // FAULT: Errore Hardware (Simulato)
+                    with( error ) { .message = "Errore hardware sblocco veicolo " + vid };
+                    throw( HardwareErrorFault, error )
+                }
+                else if ( global.vehicles.(vid).status == "UNLOCKED" ) {
+                    // FAULT: Già in uso
+                    with( error ) { .message = "Veicolo già sbloccato/in uso" };
+                    throw( VehicleNotAvailableFault, error )
+                }
+                else {
+                    // OK: Sblocco
+                    global.vehicles.(vid).status = "UNLOCKED";
+                    response.success = true;
+                    response.message = "Veicolo sbloccato correttamente";
+                    println@Console( " > Veicolo " + vid + " SBLOCCATO." )()
+                }
             }
-        };
+        } ]
 
-        // Operazione 'lock': Termina la sessione (richiede il SID corretto)
-        [lock( request )( response ) {
-            undef(response) // Pulizia variabile risposta
-            id = request.vehicleId;
-            station = request.stationId;
-            println@Console( "[LOCK-REQ] Veicolo: " + id + " presso " + station )();
+        // OPERAZIONE GET ALL STATIONS
+        [ getAllStations()( response ) {
+            println@Console( "Richiesta getAllStations" )()
             
-            synchronized( lock ) {
-                // Blocca il veicolo e aggiorna la sua posizione (stazione)
-                global.station_vehicles.(id).locked = true;
-                global.station_vehicles.(id).station = station
+            i = 0;
+            foreach( stationId : global.stations ) {
+                response.stations[i].stationId = global.stations.(stationId).stationId;
+                
+                j = 0;
+                foreach( vehicleId : global.stations.(stationId).vehicles ) {
+                    response.stations[i].vehicles[j].vehicleId = global.stations.(stationId).vehicles.(vehicleId).vehicleId;
+                    response.stations[i].vehicles[j].status = global.stations.(stationId).vehicles.(vehicleId).status;
+                    response.stations[i].vehicles[j].battery = global.stations.(stationId).vehicles.(vehicleId).battery;
+                    j++
+                };
+                i++
             };
+            
+            println@Console( " > Restituite " + i + " stazioni" )()
+        } ]
 
-            response.success = true;
-            response.message = "Veicolo bloccato e parcheggiato."
-        }] 
+        // OPERAZIONE LOCK
+        [ lock( request )( response ) {
+            vid = request.vehicleId;
+            println@Console( "Richiesta LOCK per veicolo: " + vid )();
+
+            synchronized( lockManager ) {
+                if ( !is_defined( global.vehicles.(vid) ) ) {
+                    with( error ) { .message = "Veicolo sconosciuto" };
+                    throw( VehicleNotFoundFault, error )
+                }
+                else {
+                    // OK: Blocco
+                    global.vehicles.(vid).status = "LOCKED";
+                    
+                    // Simuliamo consumo batteria casuale (o leggiamo mock)
+                    // Per ora statico per semplicità, poi collegheremo al Fleet se serve
+                    finalBat = global.vehicles.(vid).battery - 5; 
+                    if (finalBat < 0) finalBat = 0;
+                    global.vehicles.(vid).battery = finalBat;
+
+                    response.success = true;
+                    response.message = "Veicolo bloccato";
+                    response.finalBatteryLevel = finalBat;
+                    
+                    println@Console( " > Veicolo " + vid + " BLOCCATO. Batt: " + finalBat + "%" )()
+                }
+            }
+        } ]
     }
 }

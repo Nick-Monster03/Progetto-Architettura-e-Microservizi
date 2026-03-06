@@ -1,6 +1,5 @@
-FROM jolielang/jolie
-# Espone la porta definita in StationService.ol
-EXPOSE 8083
-COPY . /app
+FROM jolielang/jolie:latest
 WORKDIR /app
-CMD jolie StationService.ol
+COPY . .
+EXPOSE 8083
+CMD ["jolie", "StationService.ol"]

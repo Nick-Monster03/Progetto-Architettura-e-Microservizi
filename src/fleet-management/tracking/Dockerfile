@@ -1,6 +1,5 @@
-FROM jolielang/jolie
-# Espone la porta interna definita in TrackingService.ol
+FROM jolielang/jolie:latest
 EXPOSE 8084
 COPY . /app
 WORKDIR /app
-CMD jolie TrackingService.ol
+CMD ["jolie", "TrackingService.ol"]

@@ -1,0 +1,51 @@
+(P)_Bank ::=
+
+/* --- RAMO 1: NOLEGGIO IMMEDIATO --- */
+preAuthorize@ACME ;
+(
+    /* Fondi Insufficienti */
+    insufficientFunds_OUT@ACME
+    +
+    /* Fondi OK -> Token inviato */
+    authToken_OUT@ACME ;
+    
+    /* Attesa esito Stazione */
+    (
+        /* Caso Stazione Guasta: Sblocco cauzione */
+        cancelAuth@ACME
+        +
+        /* Caso Noleggio concluso: Pagamento */
+        commitPayment@ACME ;
+        ( paymentReceipt_OUT@ACME + paymentFailed_OUT@ACME )
+    )
+)
+
++
+
+/* --- RAMO 2: PRENOTAZIONE --- */
+preAuthorize@ACME ;
+(
+    insufficientFunds_OUT@ACME
+    +
+    authToken_OUT@ACME ;
+    
+    /* SCELTA TRIPLA (Dipende da cosa succede lato ACME/User) */
+    (
+        /* B3: Cancellazione */
+        cancelAuth@ACME
+        +
+        /* B2: Timeout (Conversione cauzione in penale) */
+        commitPenalty@ACME ; 
+        penaltyReceipt_OUT@ACME
+        +
+        /* B1: Ritiro (Analogo al noleggio immediato) */
+        (
+            /* Stazione KO */
+            cancelAuth@ACME
+            +
+            /* Stazione OK -> Fine Noleggio */
+            commitPayment@ACME ;
+            ( paymentReceipt_OUT@ACME + paymentFailed_OUT@ACME )
+        )
+    )
+)

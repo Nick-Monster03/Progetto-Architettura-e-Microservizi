@@ -1,11 +1,15 @@
-FROM jolielang/jolie
+FROM jolielang/jolie:latest
+WORKDIR /app
+
+# Copia i file del gateway
+COPY fleet-management/gateway/FleetInterface.iol /app/fleet-management/gateway/
+COPY fleet-management/gateway/FleetGateway.ol /app/fleet-management/gateway/
+
+# Copia le interfacce dei servizi interni
+COPY fleet-management/tracking/TrackingInterface.iol /app/fleet-management/tracking/
+COPY fleet-management/battery/BatteryInterface.iol /app/fleet-management/battery/
+COPY simulation/SimulatorInterface.iol /app/simulation/
+
+WORKDIR /app/fleet-management/gateway
 EXPOSE 8082
-
-# Copia tutto il contenuto di 'fleet-management' (gateway, tracking, battery) in /app
-COPY . /app
-
-# Ci spostiamo nella cartella del gateway per eseguire il servizio
-WORKDIR /app/gateway
-
-# Ora l'include "../tracking/..." funzionerà perché la cartella tracking esiste in /app/tracking
-CMD jolie FleetGateway.ol
+CMD ["jolie", "FleetGateway.ol"]

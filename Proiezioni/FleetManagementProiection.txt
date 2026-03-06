@@ -1,0 +1,28 @@
+(P)_Fleet ::=
+
+/* --- RAMO 1: NOLEGGIO IMMEDIATO --- */
+startTracking@ACME ;
+trackingAck_OUT@ACME ;
+
+/* Loop richiesta stato da ACME */
+( getStatus@ACME ; statusReport_OUT@ACME )* ;
+
+stopTracking@ACME ;
+tripReport_OUT@ACME
+
++
+
+(
+    /* B3: Cancellazione (Fleet fermo) */
+    1
+    +
+    /* B2: Timeout (Fleet fermo) */
+    1
+    +
+    /* B1: Ritiro (Fleet attivo) */
+    startTracking@ACME ;
+    trackingAck_OUT@ACME ;
+    ( getStatus@ACME ; statusReport_OUT@ACME )* ;
+    stopTracking@ACME ;
+    tripReport_OUT@ACME
+)

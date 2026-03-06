@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="http://battery.fleet.acme.mobility.wsdl" xmlns:xsd1="http://battery.fleet.acme.mobility.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://battery.fleet.acme.mobility.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+  <wsdl:types>
+    <xs:schema targetNamespace="http://battery.fleet.acme.mobility.xsd" xmlns:sch="http://battery.fleet.acme.mobility.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="updateBattery"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="level" type="xs:int"/><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="updateBatteryResponse"><xs:complexType><xs:sequence/></xs:complexType></xs:element><xs:element name="getBattery"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="getBatteryResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="level" type="xs:int"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+  </wsdl:types>
+  <wsdl:message name="void">
+    <wsdl:part name="body" element="xsd1:updateBatteryResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="GetBatteryRequest">
+    <wsdl:part name="body" element="xsd1:getBattery">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="GetBatteryResponse">
+    <wsdl:part name="body" element="xsd1:getBatteryResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="UpdateBatteryRequest">
+    <wsdl:part name="body" element="xsd1:updateBattery">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:portType name="BatterySocket">
+    <wsdl:operation name="updateBattery">
+      <wsdl:input message="tns:UpdateBatteryRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:void">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="getBattery">
+      <wsdl:input message="tns:GetBatteryRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:GetBatteryResponse">
+    </wsdl:output>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="BatterySocketSOAPBinding" type="tns:BatterySocket">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="updateBattery">
+      <soap:operation soapAction="updateBattery" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="getBattery">
+      <soap:operation soapAction="getBattery" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="BatterySocketService">
+    <wsdl:port name="BatterySocketServicePort" binding="tns:BatterySocketSOAPBinding">
+      <soap:address location="http://localhost:8085"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
