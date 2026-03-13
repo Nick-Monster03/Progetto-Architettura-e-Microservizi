@@ -2,6 +2,7 @@ include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
 include "../../simulation/SimulatorInterface.iol"
+include "../../user-managment/UserInterface.iol"
 from time import Time
 from console import Console
 
@@ -15,6 +16,7 @@ service FleetGateway {
             .osc.startTracking.method = "post";
             .osc.registerUser.method = "post";
             .osc.stopTracking.method = "post";
+            .osc.loginUser.method = "post";
             .osc.bookVehicle.method = "post";
             .osc.getStatus.method = "get";
             .osc.getMap.method = "get";
@@ -41,6 +43,12 @@ service FleetGateway {
         Protocol: soap { .dropRootValue = true }
         Interfaces: SimulatorInterface
     }
+    outputPort UserClient {
+        // user-service sarà il nome che daremo al container su Docker
+        Location: "socket://user-service:8005" 
+        Protocol: soap { .dropRootValue = true }
+        Interfaces: UserInterface
+    }
    
     init {
         // Dati iniziali (Bari)
@@ -66,6 +74,16 @@ service FleetGateway {
 
     
     main {
+
+        [ registerUser( request )( response ) {
+            println@Console("[GW] Inoltro richiesta di registrazione per: " + request.username)()
+            registerUser@UserClient( request )( response )
+        } ]
+
+        [ loginUser( request )( response ) {
+            println@Console("[GW] Inoltro richiesta di login per: " + request.username)()
+            loginUser@UserClient( request )( response )
+        } ]
 
         [ startTracking( request )( response ) {
             vid = request.vehicleId;
