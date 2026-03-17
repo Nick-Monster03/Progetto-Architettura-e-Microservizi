@@ -8,4 +8,14 @@ src/client-app/node_modules/
 
 # Ignora le impostazioni locali dell'editor
 .vscode/
-.idea/
+.idea/camunda-acme/target/
+
+# Ignora i file compilati di Java/Maven
+camunda-acme/target/
+*.class
+*.jar
+
+# Ignora cartelle vecchie o di sistema
+src/user-managment/
+.vscode/
+node_modules/

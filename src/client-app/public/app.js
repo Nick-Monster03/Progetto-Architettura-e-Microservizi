@@ -1,5 +1,4 @@
-const GATEWAY_URL = "http://localhost:8082"; // Indirizzo del FleetGateway.ol
-
+const GATEWAY_URL = "http://localhost:8082"; 
 const app = {
     map: null,
     user: null,
@@ -7,10 +6,8 @@ const app = {
     currentRentalId: null,
 
     init: function () {
-        // Inizializza mappa su Roma (Colosseo)
         this.map = L.map('map', { zoomControl: false }).setView([41.8902, 12.4922], 14);
         
-        // Aggiungiamo i controlli dello zoom in alto a destra per non coprire la nostra card
         L.control.zoom({ position: 'topright' }).addTo(this.map);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -28,6 +25,16 @@ const app = {
     },
 
     // --- AUTENTICAZIONE ---
+    closeModal: function(modalId) {
+        const modalEl = document.getElementById(modalId);
+        if (modalEl) {
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    },
 
     login: function () {
         const user = document.getElementById('username').value;
@@ -37,6 +44,7 @@ const app = {
             return Swal.fire({ icon: 'error', title: 'Oops...', text: 'Inserisci username e password!' });
         }
         
+        this.closeModal('loginModal');
         Swal.fire({ title: 'Accesso in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         fetch(`${GATEWAY_URL}/loginUser`, {
@@ -49,18 +57,8 @@ const app = {
             if (res.success) {
                 this.user = user;
                 localStorage.setItem('acme_user', user); 
-
-                // Chiusura sicura della modale
-                const modalEl = document.getElementById('loginModal');
-                let modal = bootstrap.Modal.getInstance(modalEl);
-                if (!modal) modal = new bootstrap.Modal(modalEl);
-                modal.hide();
-                document.body.classList.remove('modal-open');
-                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-
                 this.updateUI('logged');
                 this.refreshMap();
-                
                 Swal.fire({ icon: 'success', title: 'Accesso Effettuato', text: res.message, timer: 1500, showConfirmButton: false });
             } else {
                 Swal.fire({ icon: 'error', title: 'Accesso Negato', text: res.message });
@@ -76,6 +74,9 @@ const app = {
         if (!user || !pass) {
             return Swal.fire({ icon: 'warning', text: 'Inserisci username e password!' });
         }
+        
+        // Chiudiamo correttamente la modale di REGISTRAZIONE
+        this.closeModal('registerModal');
 
         Swal.fire({ title: 'Registrazione in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -87,15 +88,6 @@ const app = {
         .then(res => res.json())
         .then(res => {
             if (res.success) {
-                // Chiusura sicura della modale
-                const modalEl = document.getElementById('registerModal');
-                let modal = bootstrap.Modal.getInstance(modalEl);
-                if (!modal) modal = new bootstrap.Modal(modalEl);
-                modal.hide();
-                document.body.classList.remove('modal-open');
-                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-
-                // Precompila il login
                 document.getElementById('username').value = user; 
                 Swal.fire({ icon: 'success', title: 'Registrato!', text: res.message });
             } else {

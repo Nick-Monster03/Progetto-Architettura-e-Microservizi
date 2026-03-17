@@ -34,8 +34,8 @@ type GetStatusResponse {
 }
 
 type UserRequestGw {
-    .username: string
-    .password: string
+    .username?: string
+    .password?: string
 }
 
 type UserResponseGw {
@@ -49,5 +49,8 @@ interface FleetInterface {
         stopTracking(StopTrackingRequest)(StopTrackingResponse),
         getStatus(GetStatusRequest)(GetStatusResponse),
         registerUser(UserRequestGw)(UserResponseGw),
-        loginUser(UserRequestGw)(UserResponseGw)
+        loginUser(UserRequestGw)(UserResponseGw),
+        preflight(undefined)(undefined),
+        preflightRegister(undefined)(undefined),
+        preflightLogin(undefined)(undefined)
 }

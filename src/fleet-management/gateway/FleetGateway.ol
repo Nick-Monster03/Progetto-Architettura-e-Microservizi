@@ -2,7 +2,7 @@ include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
 include "../../simulation/SimulatorInterface.iol"
-include "../../user-managment/UserInterface.iol"
+include "../../user-management/UserInterface.iol"
 from time import Time
 from console import Console
 
@@ -20,6 +20,15 @@ service FleetGateway {
             .osc.bookVehicle.method = "post";
             .osc.getStatus.method = "get";
             .osc.getMap.method = "get";
+            .response.headers.("Access-Control-Allow-Origin") = "*";
+            .response.headers.("Access-Control-Allow-Methods") = "POST, GET, OPTIONS";
+            .response.headers.("Access-Control-Allow-Headers") = "Content-Type";
+            .default = "preflight";
+            .osc.preflightRegister.method = "options";
+            .osc.preflightRegister.alias = "registerUser";
+
+            .osc.preflightLogin.method = "options";
+            .osc.preflightLogin.alias = "loginUser";
         }
         Interfaces: FleetInterface
     }
@@ -44,9 +53,8 @@ service FleetGateway {
         Interfaces: SimulatorInterface
     }
     outputPort UserClient {
-        // user-service sarà il nome che daremo al container su Docker
         Location: "socket://user-service:8005" 
-        Protocol: soap { .dropRootValue = true }
+        Protocol: soap 
         Interfaces: UserInterface
     }
    
@@ -75,14 +83,36 @@ service FleetGateway {
     
     main {
 
+        [ preflightRegister( request )( response ) {
+            println@Console("[GW] CORS Preflight per Register approvato!")()
+        } ]
+
+        [ preflightLogin( request )( response ) {
+            println@Console("[GW] CORS Preflight per Login approvato!")()
+        } ]
+
         [ registerUser( request )( response ) {
-            println@Console("[GW] Inoltro richiesta di registrazione per: " + request.username)()
-            registerUser@UserClient( request )( response )
+            if ( !is_defined( request.username ) ) {
+                response.success = true;
+                response.message = "CORS OK"   
+            } else {
+                println@Console("[GW] Inoltro richiesta di registrazione per: " + request.username)();
+                registerUser@UserClient( request )( response )
+            }
         } ]
 
         [ loginUser( request )( response ) {
-            println@Console("[GW] Inoltro richiesta di login per: " + request.username)()
-            loginUser@UserClient( request )( response )
+            if ( !is_defined( request.username ) ) {
+                response.success = true;
+                response.message = "CORS OK"   
+            } else {
+                println@Console("[GW] Inoltro richiesta di login per: " + request.username)();
+                loginUser@UserClient( request )( response )
+            }
+        } ]
+
+        [ preflight( request )( response ) {
+            println@Console("[GW] Richiesta CORS Preflight intercettata e approvata!")()
         } ]
 
         [ startTracking( request )( response ) {
