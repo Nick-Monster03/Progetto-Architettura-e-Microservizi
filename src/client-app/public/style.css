@@ -1,0 +1,33 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden; 
+}
+
+#map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    z-index: 1; 
+}
+
+.navbar { z-index: 1000; }
+
+.modal { z-index: 1060 !important; }
+
+.modal-backdrop { z-index: 1050 !important; }
+
+.floating-panel-container {
+    z-index: 1000;
+    pointer-events: none; 
+}
+
+.floating-panel {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+}
