@@ -35,7 +35,7 @@ camunda:
       schema-update: true
       type: postgres
     
-    history-level: audit
+    history-level: full
 
     job-execution:
       enabled: true
