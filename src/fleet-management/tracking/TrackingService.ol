@@ -1,5 +1,6 @@
 include "TrackingInterface.iol"
 include "console.iol"
+include "database.iol"
 
 service TrackingService {
     execution: concurrent
@@ -15,108 +16,155 @@ service TrackingService {
     }
 
     init {
-        global.vehicles.("car1").lat = 41.1171;
-        global.vehicles.("car1").lon = 16.8719;
-        global.vehicles.("car1").status = "AVAILABLE";
-        global.vehicles.("car1").totalKm = 0.0;
-
-        global.vehicles.("car2").lat = 41.1222;
-        global.vehicles.("car2").lon = 16.8715;
-        global.vehicles.("car2").status = "AVAILABLE";
-        global.vehicles.("car2").totalKm = 0.0;
-
-        global.vehicles.("car3").lat = 41.1200;
-        global.vehicles.("car3").lon = 16.8700;
-        global.vehicles.("car3").status = "AVAILABLE";
-        global.vehicles.("car3").totalKm = 0.0;
-
-        println@Console("Tracking Service avviato (SOAP port 8084)")()
+        with (connectionInfo) {
+            .username = "acme_user";
+            .password = "acme_password_2025";
+            .host = "localhost"; 
+            .port = 5433;
+            //.host = "postgres";
+            .database = "acme_mobility";
+            .driver = "postgresql"
+        };
+        connect@Database(connectionInfo)();
+        println@Console("Tracking Service avviato (SOAP port 8084)")();
+        println@Console("Connected to acme_mobility")()
     }
 
     main {
-        [ updateLocation( request )() {
-            synchronized( trackingLock ) {
-                vid = request.vehicleId;
-                
-                if ( is_defined( global.vehicles.(vid) ) ) {
-                    // 1. Recupero posizione precedente
-                    oldLat = global.vehicles.(vid).lat;
-                    oldLon = global.vehicles.(vid).lon;
-                    
-                    // 2. Aggiorno con nuova posizione
-                    println@Console("Ricevuto updateLocation per " + vid )();
-                    println@Console("Aggiornamento posizione per " + vid + ": (" + request.location.latitude + ", " + request.location.longitude + ")")();
-                    newLat = request.location.latitude;
-                    newLon = request.location.longitude;
-                    global.vehicles.(vid).lat = newLat;
-                    global.vehicles.(vid).lon = newLon;
 
-                    // 3. Calcolo Distanza (Euclidea approssimata x 111km per convertire gradi in km)
-                    // Delta Lat/Lon
+        [ updateLocation(request)() {
+            synchronized(trackingLock) {
+                vid = request.vehicleId;
+                newLat = double(request.location.latitude);
+                newLon = double(request.location.longitude);
+
+                // Leggi posizione precedente da tracking_veichle
+                query@Database(
+                    "SELECT latitude, longitude FROM tracking_veichle " +
+                    "WHERE vehicle_id = '" + vid + "' ORDER BY id DESC LIMIT 1"
+                )(posRes);
+
+                if (#posRes.row == 0) {
+                    // Veicolo non ancora in tracking → inserisci primo record
+                    update@Database(
+                        "INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) " +
+                        "VALUES ('" + vid + "', " + newLat + ", " + newLon + ")"
+                    )(ir);
+
+                    println@Console("Ricevuto updateLocation per " + vid)();
+                    println@Console(" > " + vid + " primo inserimento tracking")()
+
+                } else {
+                    oldLat = double(posRes.row[0].latitude);
+                    oldLon = double(posRes.row[0].longitude);
+
+                    // Calcolo distanza (approssimazione euclidea)
                     dLat = newLat - oldLat;
                     dLon = newLon - oldLon;
-                    
-                    // Valore Assoluto Manuale (se negativo, moltiplico per -1)
-                    if ( dLat < 0.0 ) { dLat = dLat * -1.0 };
-                    if ( dLon < 0.0 ) { dLon = dLon * -1.0 };
-                    
-                    // Somma semplice dei cateti (Approssimazione sufficiente per la demo)
-                    // Invece di Pitagora (sqrt), sommiamo gli spostamenti asse X e Y
-                    distDeg = dLat + dLon;
-                    
-                    // Conversione in KM (1 grado ~= 111km)
-                    distKm = distDeg * 111.0;
-                    // 4. Aggiorno contatore totale
-                    global.vehicles.(vid).totalKm = global.vehicles.(vid).totalKm + distKm;
+                    if (dLat < 0.0) { dLat = dLat * -1.0 };
+                    if (dLon < 0.0) { dLon = dLon * -1.0 };
+                    distKm = (dLat + dLon) * 111.0;
 
-                    println@Console(" > " + vid + " moved. Tot KM: " + global.vehicles.(vid).totalKm )()
-                } else {
-                    global.vehicles.(vid).lat = request.location.latitude;
-                    global.vehicles.(vid).lon = request.location.longitude;
-                    global.vehicles.(vid).totalKm = 0.0;
-                    global.vehicles.(vid).status = "AVAILABLE"
+                    // Inserisci nuova posizione in tracking_veichle
+                    update@Database(
+                        "INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) " +
+                        "VALUES ('" + vid + "', " + newLat + ", " + newLon + ")"
+                    )(ir);
+
+                    // Aggiorna total_km in vehicles
+                    query@Database(
+                        "SELECT total_km FROM vehicles WHERE vehicle_id = '" + vid + "'"
+                    )(kmRes);
+
+                    if (#kmRes.row == 1) {
+                        currentKm = double(kmRes.row[0].total_km);
+                        newKm = currentKm + distKm;
+                        update@Database(
+                            "UPDATE vehicles SET total_km = " + newKm + ", last_updated = CURRENT_TIMESTAMP " +
+                            "WHERE vehicle_id = '" + vid + "'"
+                        )(ur)
+                    };
+
+                    println@Console("Ricevuto updateLocation per " + vid)();
+                    println@Console("Aggiornamento posizione per " + vid + ": (" + newLat + ", " + newLon + ")")();
+                    println@Console(" > " + vid + " moved. New pos: (" + newLat + ", " + newLon + ")")()
                 }
             }
         } ]
 
-        [ getInfo( request )( response ) {
+        [ getInfo(request)(response) {
             vid = request.vehicleId;
-            synchronized( trackingLock ) {
-                if ( is_defined( global.vehicles.(vid) ) ) {
-                    response.vehicleId = vid;
-                    response.location.latitude = global.vehicles.(vid).lat;
-                    response.location.longitude = global.vehicles.(vid).lon;
-                    response.status = global.vehicles.(vid).status;
-                    response.totalKm = global.vehicles.(vid).totalKm
+            synchronized(trackingLock) {
+
+                // Leggi status e total_km da vehicles
+                query@Database(
+                    "SELECT status, total_km FROM vehicles WHERE vehicle_id = '" + vid + "'"
+                )(vRes);
+
+                // Leggi ultima posizione da tracking_veichle
+                query@Database(
+                    "SELECT latitude, longitude FROM tracking_veichle " +
+                    "WHERE vehicle_id = '" + vid + "' ORDER BY id DESC LIMIT 1"
+                )(posRes);
+
+                if (#vRes.row == 0) {
+                    println@Console("Richiesta getInfo per veicolo sconosciuto: " + vid)();
+                    response.vehicleId           = vid;
+                    response.status              = "UNKNOWN";
+                    response.totalKm             = 0.0;
+                    response.location.latitude   = 0.0;
+                    response.location.longitude  = 0.0
                 } else {
-                    // Veicolo non trovato
-                    println@Console("Richiesta getInfo per veicolo sconosciuto1: " + vid)();
-                    response.vehicleId = vid;
-                    response.status = "UNKNOWN";
-                    response.totalKm = 0.0;
-                    response.location.latitude = 0.0;
-                    response.location.longitude = 0.0
+                    response.vehicleId  = vid;
+                    response.status     = vRes.row[0].status;
+                    response.totalKm    = double(vRes.row[0].total_km);
+
+                    if (#posRes.row == 1) {
+                        response.location.latitude  = double(posRes.row[0].latitude);
+                        response.location.longitude = double(posRes.row[0].longitude)
+                    } else {
+                        response.location.latitude  = 0.0;
+                        response.location.longitude = 0.0
+                    }
                 }
             }
         } ]
 
-        [ setStatus( request )( response ) {
-            synchronized( trackingLock ) {
-                if ( is_defined( global.vehicles.(request.vehicleId) ) ) {
-                    global.vehicles.(request.vehicleId).status = request.status
-                }
+        [ setStatus(request)(response) {
+            synchronized(trackingLock) {
+                update@Database(
+                    "UPDATE vehicles SET status = '" + request.status + "', last_updated = CURRENT_TIMESTAMP " +
+                    "WHERE vehicle_id = '" + request.vehicleId + "'"
+                )(ur);
+                println@Console("setStatus: " + request.vehicleId + " → " + request.status)()
             }
         } ]
 
-        [ getVehicleList( request )( response ) {
-             synchronized( trackingLock ) {
-                foreach( vid : global.vehicles ) {
-                    i = #response.vehicles;
-                    response.vehicles[i].vehicleId = vid;
-                    response.vehicles[i].status = global.vehicles.(vid).status;
-                    response.vehicles[i].totalKm = global.vehicles.(vid).totalKm;
-                    response.vehicles[i].location.latitude = global.vehicles.(vid).lat;
-                    response.vehicles[i].location.longitude = global.vehicles.(vid).lon
+        [ getVehicleList(request)(response) {
+            synchronized(trackingLock) {
+
+                // Leggi tutti i veicoli
+                query@Database(
+                    "SELECT v.vehicle_id, v.status, v.total_km, " +
+                    "t.latitude, t.longitude " +
+                    "FROM vehicles v " +
+                    "LEFT JOIN tracking_veichle t ON v.vehicle_id = t.vehicle_id " +
+                    "AND t.id = (SELECT MAX(id) FROM tracking_veichle WHERE vehicle_id = v.vehicle_id)"
+                )(vRes);
+
+                for (i = 0, i < #vRes.row, i++) {
+                    row -> vRes.row[i];
+                    response.vehicles[i].vehicleId          = row.vehicle_id;
+                    response.vehicles[i].status             = row.status;
+                    response.vehicles[i].totalKm            = double(row.total_km);
+
+                    if (is_defined(row.latitude)) {
+                        response.vehicles[i].location.latitude  = double(row.latitude);
+                        response.vehicles[i].location.longitude = double(row.longitude)
+                    } else {
+                        response.vehicles[i].location.latitude  = 0.0;
+                        response.vehicles[i].location.longitude = 0.0
+                    }
                 }
             }
         } ]

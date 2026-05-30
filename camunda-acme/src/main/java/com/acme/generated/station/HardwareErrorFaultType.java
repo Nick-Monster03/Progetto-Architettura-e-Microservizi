@@ -9,9 +9,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -41,7 +41,7 @@ public class HardwareErrorFaultType {
     protected String message;
 
     /**
-     * Recupera il valore della proprietà vehicleId.
+     * Gets the value of the vehicleId property.
      * 
      * @return
      *     possible object is
@@ -53,7 +53,7 @@ public class HardwareErrorFaultType {
     }
 
     /**
-     * Imposta il valore della proprietà vehicleId.
+     * Sets the value of the vehicleId property.
      * 
      * @param value
      *     allowed object is
@@ -65,7 +65,7 @@ public class HardwareErrorFaultType {
     }
 
     /**
-     * Recupera il valore della proprietà message.
+     * Gets the value of the message property.
      * 
      * @return
      *     possible object is
@@ -77,7 +77,7 @@ public class HardwareErrorFaultType {
     }
 
     /**
-     * Imposta il valore della proprietà message.
+     * Sets the value of the message property.
      * 
      * @param value
      *     allowed object is

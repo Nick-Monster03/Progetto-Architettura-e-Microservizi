@@ -65,6 +65,7 @@ CREATE TABLE vehicles (
     status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE',
     battery_level INT NOT NULL DEFAULT 100,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_km DECIMAL(10,2) DEFAULT 0.00,
     CONSTRAINT status_check CHECK (status IN ('AVAILABLE', 'RESERVED', 'UNLOCKED', 'IN_USE', 'BROKEN', 'CHARGING'))
 );
 
@@ -102,7 +103,9 @@ CREATE TABLE authorizations (
     user_id VARCHAR(50) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     is_reservation BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP
+    expires_at TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    CONSTRAINT auth_status_check CHECK (status IN ('ACTIVE', 'CANCELLED', 'COMMITTED'))
 );
 
 COMMENT ON TABLE authorizations IS 'Token di pre-autorizzazione bancaria';
@@ -220,10 +223,19 @@ BEFORE UPDATE ON user_bank
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
+-- Funzione specifica per vehicles (campo last_updated invece di updated_at)
+CREATE OR REPLACE FUNCTION update_vehicles_last_updated_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.last_updated = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER update_vehicles_last_updated
 BEFORE UPDATE ON vehicles
 FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+EXECUTE FUNCTION update_vehicles_last_updated_fn();
 
 CREATE TRIGGER update_rentals_updated_at
 BEFORE UPDATE ON rentals

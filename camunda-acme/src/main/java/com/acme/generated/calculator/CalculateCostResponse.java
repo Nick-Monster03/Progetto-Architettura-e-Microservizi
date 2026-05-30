@@ -8,9 +8,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -48,7 +48,7 @@ public class CalculateCostResponse {
     protected double basePriceTime;
 
     /**
-     * Recupera il valore della proprietà total.
+     * Gets the value of the total property.
      * 
      */
     public double getTotal() {
@@ -56,7 +56,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Imposta il valore della proprietà total.
+     * Sets the value of the total property.
      * 
      */
     public void setTotal(double value) {
@@ -64,7 +64,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Recupera il valore della proprietà subtotal.
+     * Gets the value of the subtotal property.
      * 
      */
     public double getSubtotal() {
@@ -72,7 +72,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Imposta il valore della proprietà subtotal.
+     * Sets the value of the subtotal property.
      * 
      */
     public void setSubtotal(double value) {
@@ -80,7 +80,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Recupera il valore della proprietà penalty.
+     * Gets the value of the penalty property.
      * 
      */
     public double getPenalty() {
@@ -88,7 +88,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Imposta il valore della proprietà penalty.
+     * Sets the value of the penalty property.
      * 
      */
     public void setPenalty(double value) {
@@ -96,7 +96,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Recupera il valore della proprietà basePriceDistance.
+     * Gets the value of the basePriceDistance property.
      * 
      */
     public double getBasePriceDistance() {
@@ -104,7 +104,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Imposta il valore della proprietà basePriceDistance.
+     * Sets the value of the basePriceDistance property.
      * 
      */
     public void setBasePriceDistance(double value) {
@@ -112,7 +112,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Recupera il valore della proprietà basePriceTime.
+     * Gets the value of the basePriceTime property.
      * 
      */
     public double getBasePriceTime() {
@@ -120,7 +120,7 @@ public class CalculateCostResponse {
     }
 
     /**
-     * Imposta il valore della proprietà basePriceTime.
+     * Sets the value of the basePriceTime property.
      * 
      */
     public void setBasePriceTime(double value) {

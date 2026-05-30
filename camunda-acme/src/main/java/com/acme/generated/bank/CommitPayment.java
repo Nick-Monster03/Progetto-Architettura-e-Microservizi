@@ -9,9 +9,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -53,7 +53,7 @@ public class CommitPayment {
     protected int batteryLevel;
 
     /**
-     * Recupera il valore della proprietà duration.
+     * Gets the value of the duration property.
      * 
      */
     public int getDuration() {
@@ -61,7 +61,7 @@ public class CommitPayment {
     }
 
     /**
-     * Imposta il valore della proprietà duration.
+     * Sets the value of the duration property.
      * 
      */
     public void setDuration(int value) {
@@ -69,7 +69,7 @@ public class CommitPayment {
     }
 
     /**
-     * Recupera il valore della proprietà finalAmount.
+     * Gets the value of the finalAmount property.
      * 
      */
     public double getFinalAmount() {
@@ -77,7 +77,7 @@ public class CommitPayment {
     }
 
     /**
-     * Imposta il valore della proprietà finalAmount.
+     * Sets the value of the finalAmount property.
      * 
      */
     public void setFinalAmount(double value) {
@@ -85,7 +85,7 @@ public class CommitPayment {
     }
 
     /**
-     * Recupera il valore della proprietà penalty.
+     * Gets the value of the penalty property.
      * 
      * @return
      *     possible object is
@@ -97,7 +97,7 @@ public class CommitPayment {
     }
 
     /**
-     * Imposta il valore della proprietà penalty.
+     * Sets the value of the penalty property.
      * 
      * @param value
      *     allowed object is
@@ -109,7 +109,7 @@ public class CommitPayment {
     }
 
     /**
-     * Recupera il valore della proprietà authToken.
+     * Gets the value of the authToken property.
      * 
      * @return
      *     possible object is
@@ -121,7 +121,7 @@ public class CommitPayment {
     }
 
     /**
-     * Imposta il valore della proprietà authToken.
+     * Sets the value of the authToken property.
      * 
      * @param value
      *     allowed object is
@@ -133,7 +133,7 @@ public class CommitPayment {
     }
 
     /**
-     * Recupera il valore della proprietà kilometers.
+     * Gets the value of the kilometers property.
      * 
      */
     public double getKilometers() {
@@ -141,7 +141,7 @@ public class CommitPayment {
     }
 
     /**
-     * Imposta il valore della proprietà kilometers.
+     * Sets the value of the kilometers property.
      * 
      */
     public void setKilometers(double value) {
@@ -149,7 +149,7 @@ public class CommitPayment {
     }
 
     /**
-     * Recupera il valore della proprietà batteryLevel.
+     * Gets the value of the batteryLevel property.
      * 
      */
     public int getBatteryLevel() {
@@ -157,7 +157,7 @@ public class CommitPayment {
     }
 
     /**
-     * Imposta il valore della proprietà batteryLevel.
+     * Sets the value of the batteryLevel property.
      * 
      */
     public void setBatteryLevel(int value) {

@@ -1,3 +1,10 @@
+// ============================================================
+// MyInterface.iol - Interfaccia per DatabaseService
+// Allineata allo schema reale del database acme_mobility
+// ============================================================
+
+// ==================== USERS / USER_BANK ====================
+
 type UserBalanceRequest {
     .userId: string
 }
@@ -11,6 +18,9 @@ type UpdateBalanceRequest {
     .newBalance: double
 }
 
+// ==================== VEHICLES ====================
+// Nota: lat/lon/km sono in tracking_veichle, non in vehicles
+
 type VehicleInfoRequest {
     .vehicleId: string
 }
@@ -18,19 +28,9 @@ type VehicleInfoRequest {
 type VehicleInfoResponse {
     .vehicleId: string
     .stationId: string
-    .status: string
+    .status: string        // AVAILABLE, RESERVED, UNLOCKED, IN_USE, BROKEN, CHARGING
     .batteryLevel: int
-    .latitude: double
-    .longitude: double
-    .totalKm: double
     .lastUpdated: string
-}
-
-type UpdateVehiclePositionRequest {
-    .vehicleId: string
-    .latitude: double
-    .longitude: double
-    .totalKm: double
 }
 
 type UpdateVehicleBatteryRequest {
@@ -40,14 +40,17 @@ type UpdateVehicleBatteryRequest {
 
 type UpdateVehicleStatusRequest {
     .vehicleId: string
-    .status: string
+    .status: string        // AVAILABLE, RESERVED, UNLOCKED, IN_USE, BROKEN, CHARGING
 }
+
+// ==================== AUTHORIZATIONS ====================
+// Nota: blocked_amount rimosso (sempre €10)
 
 type CreateAuthorizationRequest {
     .authToken: string
     .userId: string
-    .blockedAmount: double
     .isReservation: bool
+    // status DEFAULT = 'ACTIVE' impostato dal DB
 }
 
 type GetAuthorizationRequest {
@@ -57,32 +60,35 @@ type GetAuthorizationRequest {
 type GetAuthorizationResponse {
     .authToken: string
     .userId: string
-    .blockedAmount: double
     .isReservation: bool
-    .status: string
+    .status: string        // ACTIVE, CANCELLED, COMMITTED
     .createdAt: string
 }
 
 type UpdateAuthStatusRequest {
     .authToken: string
-    .status: string  // ACTIVE, CANCELLED, COMMITTED
+    .status: string        // ACTIVE, CANCELLED, COMMITTED
 }
 
+// ==================== TRANSACTIONS ====================
+
 type InsertTransactionRequest {
-    .authToken?: string
     .userId: string
     .transactionType: string  // PRE_AUTH, CANCEL_AUTH, COMMIT_PAYMENT, COMMIT_PENALTY
     .amount: double
     .balanceBefore: double
     .balanceAfter: double
+    .authToken?: string
     .description?: string
 }
+
+// ==================== RENTALS ====================
 
 type CreateRentalRequest {
     .userId: string
     .vehicleId: string
     .authToken: string
-    .rentalType: string  // IMMEDIATE, RESERVATION
+    .rentalType: string        // IMMEDIATE, RESERVATION
     .startStationId: string
     .startBattery: int
     .startLatitude: double
@@ -96,13 +102,12 @@ type CreateRentalResponse {
 type UpdateRentalRequest {
     .rentalId: int
     .endStationId?: string
-    .endTime?: string
+    .endTime?: bool            // se true imposta CURRENT_TIMESTAMP
     .endBattery?: int
     .endLatitude?: double
     .endLongitude?: double
     .totalKm?: double
-    .durationMinutes?: int
-    .status?: string  // RESERVED, ACTIVE, COMPLETED, CANCELLED
+    .status?: string           // RESERVED, ACTIVE, COMPLETED, CANCELLED
 }
 
 type GetActiveRentalRequest {
@@ -118,15 +123,14 @@ type GetActiveRentalResponse {
     .status: string
 }
 
+// ==================== INVOICES ====================
+// Nota: tabella ha solo (invoice_id, rental_id, user_id, subtotal, penalty, payment_status, created_at)
+
 type CreateInvoiceRequest {
     .rentalId: int
     .userId: string
-    .authToken: string
     .subtotal: double
     .penalty: double
-    .total: double
-    .basePriceTime: double
-    .basePriceDistance: double
 }
 
 type CreateInvoiceResponse {
@@ -135,35 +139,38 @@ type CreateInvoiceResponse {
 
 type UpdateInvoiceStatusRequest {
     .invoiceId: int
-    .paymentStatus: string  
+    .paymentStatus: string     // PENDING, PAID, FAILED
 }
+
+// ============================================================
+// INTERFACCIA PRINCIPALE
+// ============================================================
 
 interface MyInterface {
     RequestResponse:
-        // Users
+        // user_bank
         getUserBalance(UserBalanceRequest)(UserBalanceResponse),
         updateUserBalance(UpdateBalanceRequest)(int),
-        
-        // Vehicles
+
+        // vehicles
         getVehicleInfo(VehicleInfoRequest)(VehicleInfoResponse),
-        updateVehiclePosition(UpdateVehiclePositionRequest)(int),
         updateVehicleBattery(UpdateVehicleBatteryRequest)(int),
         updateVehicleStatus(UpdateVehicleStatusRequest)(int),
-        
-        // Authorizations
+
+        // authorizations
         createAuthorization(CreateAuthorizationRequest)(int),
         getAuthorization(GetAuthorizationRequest)(GetAuthorizationResponse),
         updateAuthStatus(UpdateAuthStatusRequest)(int),
-        
-        // Transactions
+
+        // transactions
         insertTransaction(InsertTransactionRequest)(int),
-        
-        // Rentals
+
+        // rentals
         createRental(CreateRentalRequest)(CreateRentalResponse),
         updateRental(UpdateRentalRequest)(int),
         getActiveRental(GetActiveRentalRequest)(GetActiveRentalResponse),
-        
-        // Invoices
+
+        // invoices
         createInvoice(CreateInvoiceRequest)(CreateInvoiceResponse),
         updateInvoiceStatus(UpdateInvoiceStatusRequest)(int)
 }
