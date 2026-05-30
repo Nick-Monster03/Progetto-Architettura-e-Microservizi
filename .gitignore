@@ -9,3 +9,4 @@ src/client-app/node_modules/
 # Ignora le impostazioni locali dell'editor
 .vscode/
 .idea/
+camunda-acme/target/camunda-acme-1.0.0.jar
