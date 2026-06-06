@@ -80,7 +80,7 @@ const app = {
     // TASK B.2: Integrazione con FleetGateway
     refreshMap: function () {
         // ID dei veicoli che sappiamo esistere nel nostro sistema (simulato)
-        const vehicleIds = ["v1", "v2", "v3", "v-test"];
+        const vehicleIds = ["car1", "car2", "car3"];
 
         console.log("🔄 Richiedo aggiornamento veicoli al Gateway...");
 

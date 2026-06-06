@@ -10,9 +10,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Java class for StationInfo complex type.
+ * <p>Classe Java per StationInfo complex type.
  * 
- * <p>The following schema fragment specifies the expected content contained within this class.
+ * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
  * 
  * <pre>
  * &lt;complexType name="StationInfo"&gt;
@@ -70,7 +70,7 @@ public class StationInfo {
     }
 
     /**
-     * Gets the value of the stationId property.
+     * Recupera il valore della proprietà stationId.
      * 
      * @return
      *     possible object is
@@ -82,7 +82,7 @@ public class StationInfo {
     }
 
     /**
-     * Sets the value of the stationId property.
+     * Imposta il valore della proprietà stationId.
      * 
      * @param value
      *     allowed object is

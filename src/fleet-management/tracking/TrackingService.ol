@@ -16,19 +16,18 @@ service TrackingService {
     }
 
     init {
-        with (connectionInfo) {
-            .username = "acme_user";
-            .password = "acme_password_2025";
-            .host = "localhost"; 
-            .port = 5433;
-            //.host = "postgres";
-            .database = "acme_mobility";
-            .driver = "postgresql"
-        };
-        connect@Database(connectionInfo)();
-        println@Console("Tracking Service avviato (SOAP port 8084)")();
-        println@Console("Connected to acme_mobility")()
-    }
+    with (connectionInfo) {
+        .username = "camunda";
+        .password = "camunda";
+        .port = 5432;          // porta interna Docker
+        .host = "postgres";    // nome servizio nel docker-compose 
+        .database = "camunda"; // il DB 
+        .driver = "postgresql"
+    };
+    connect@Database(connectionInfo)();
+    println@Console("Tracking Service avviato (SOAP port 8084)")();
+    println@Console("Connected to camunda")()
+}
 
     main {
 

@@ -9,9 +9,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Java class for anonymous complex type.
+ * <p>Classe Java per anonymous complex type.
  * 
- * <p>The following schema fragment specifies the expected content contained within this class.
+ * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -48,7 +48,7 @@ public class PreAuthorize {
     protected String cardNumber;
 
     /**
-     * Gets the value of the isRiservation property.
+     * Recupera il valore della proprietà isRiservation.
      * 
      */
     public boolean isIsRiservation() {
@@ -56,7 +56,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Sets the value of the isRiservation property.
+     * Imposta il valore della proprietà isRiservation.
      * 
      */
     public void setIsRiservation(boolean value) {
@@ -64,7 +64,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Gets the value of the amount property.
+     * Recupera il valore della proprietà amount.
      * 
      */
     public double getAmount() {
@@ -72,7 +72,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Sets the value of the amount property.
+     * Imposta il valore della proprietà amount.
      * 
      */
     public void setAmount(double value) {
@@ -80,7 +80,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Gets the value of the userId property.
+     * Recupera il valore della proprietà userId.
      * 
      * @return
      *     possible object is
@@ -92,7 +92,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Sets the value of the userId property.
+     * Imposta il valore della proprietà userId.
      * 
      * @param value
      *     allowed object is
@@ -104,7 +104,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Gets the value of the cardNumber property.
+     * Recupera il valore della proprietà cardNumber.
      * 
      * @return
      *     possible object is
@@ -116,7 +116,7 @@ public class PreAuthorize {
     }
 
     /**
-     * Sets the value of the cardNumber property.
+     * Imposta il valore della proprietà cardNumber.
      * 
      * @param value
      *     allowed object is

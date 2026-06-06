@@ -12,6 +12,7 @@ service FleetGateway {
         Location: "socket://0.0.0.0:8082"
         Protocol: http { 
             .format = "json";
+            .cors= "true";
             .osc.startTracking.method = "post";
             .osc.registerUser.method = "post";
             .osc.stopTracking.method = "post";
