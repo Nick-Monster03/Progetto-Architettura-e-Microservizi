@@ -50,6 +50,10 @@ type StationInfo {
     vehicles*: VehicleInfo
 }
 
+type GetAllStationsRequest { 
+    stations: string
+}
+
 type GetAllStationsResponse {
     stations*: StationInfo
 }
@@ -63,5 +67,5 @@ interface StationInterface {
         lock(LockRequest)(LockResponse) 
             throws HardwareErrorFault(HardwareErrorFaultType) 
                    VehicleNotFoundFault(VehicleNotFoundFaultType),
-        getAllStations(void)(GetAllStationsResponse)
+        getAllStations(GetAllStationsRequest)(GetAllStationsResponse)
 }

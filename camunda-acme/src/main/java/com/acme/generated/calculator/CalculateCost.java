@@ -8,9 +8,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -45,7 +45,7 @@ public class CalculateCost {
     protected double kilometers;
 
     /**
-     * Recupera il valore della proprietà needsPenaltyTime.
+     * Gets the value of the needsPenaltyTime property.
      * 
      */
     public boolean isNeedsPenaltyTime() {
@@ -53,7 +53,7 @@ public class CalculateCost {
     }
 
     /**
-     * Imposta il valore della proprietà needsPenaltyTime.
+     * Sets the value of the needsPenaltyTime property.
      * 
      */
     public void setNeedsPenaltyTime(boolean value) {
@@ -61,7 +61,7 @@ public class CalculateCost {
     }
 
     /**
-     * Recupera il valore della proprietà durationMinutes.
+     * Gets the value of the durationMinutes property.
      * 
      */
     public double getDurationMinutes() {
@@ -69,7 +69,7 @@ public class CalculateCost {
     }
 
     /**
-     * Imposta il valore della proprietà durationMinutes.
+     * Sets the value of the durationMinutes property.
      * 
      */
     public void setDurationMinutes(double value) {
@@ -77,7 +77,7 @@ public class CalculateCost {
     }
 
     /**
-     * Recupera il valore della proprietà finalBatteryLevel.
+     * Gets the value of the finalBatteryLevel property.
      * 
      */
     public int getFinalBatteryLevel() {
@@ -85,7 +85,7 @@ public class CalculateCost {
     }
 
     /**
-     * Imposta il valore della proprietà finalBatteryLevel.
+     * Sets the value of the finalBatteryLevel property.
      * 
      */
     public void setFinalBatteryLevel(int value) {
@@ -93,7 +93,7 @@ public class CalculateCost {
     }
 
     /**
-     * Recupera il valore della proprietà kilometers.
+     * Gets the value of the kilometers property.
      * 
      */
     public double getKilometers() {
@@ -101,7 +101,7 @@ public class CalculateCost {
     }
 
     /**
-     * Imposta il valore della proprietà kilometers.
+     * Sets the value of the kilometers property.
      * 
      */
     public void setKilometers(double value) {

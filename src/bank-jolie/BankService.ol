@@ -30,19 +30,18 @@ cset {
 
 init {
     with (connectionInfo) {
-        .username = "acme_user";
-        .password = "acme_password_2025";
-        //.host = "localhost";
+        .username = "camunda";
+        .password = "camunda";
         .host = "postgres";
-        //.port = 5433;
-        .database = "acme_mobility";
+        .port = 5432;
+        .database = "camunda";
         .driver = "postgresql"
     };
     connect@Database(connectionInfo)();
 
     global.transactionCounter = 0;
     println@Console("Bank Service avviato (Porta 8008)")();
-    println@Console("Connected to acme_mobility")()
+    println@Console("Connected to camunda DB")()
 }
 
 main {
@@ -65,10 +64,10 @@ main {
                 response.success      = false;
                 response.errorCode    = "USER_NOT_FOUND";
                 response.errorMessage = "Utente non trovato";
-                println@Console("[BANK] ✗ User not found: " + userId)()
+                println@Console("[BANK] X User not found: " + userId)()
             } else {
                 currentBalance = double(balRes.row[0].balance);
-                println@Console("[BANK] Current balance: €" + currentBalance)();
+                println@Console("[BANK] Current balance: E" + currentBalance)();
 
                 if (currentBalance >= amount) {
 
@@ -89,8 +88,9 @@ main {
 
                     // 2. Crea autorizzazione
                     update@Database(
-                        "INSERT INTO authorizations (auth_token, user_id, is_reservation, status) " +
-                        "VALUES ('" + authToken + "', '" + userId + "', " + request.isRiservation + ", 'ACTIVE')"
+                        "INSERT INTO authorizations (auth_token, user_id, is_reservation, status, expires_at) " +
+                        "VALUES ('" + authToken + "', '" + userId + "', " + request.isRiservation + ", 'ACTIVE', " +
+                        "CURRENT_TIMESTAMP + INTERVAL '30 minutes')"
                     )(ar);
 
                     // 3. Registra transazione
@@ -108,15 +108,15 @@ main {
                     response.errorCode     = "";
                     response.errorMessage  = "";
 
-                    println@Console("[BANK] ✓ Token:   " + authToken)();
-                    println@Console("[BANK]   Blocked: €" + amount)();
-                    println@Console("[BANK]   Balance: €" + currentBalance + " → €" + newBalance)()
+                    println@Console("[BANK] Token:   " + authToken)();
+                    println@Console("[BANK]   Blocked: E" + amount)();
+                    println@Console("[BANK]   Balance: E" + currentBalance + " -> E" + newBalance)()
 
                 } else {
                     response.success      = false;
                     response.errorCode    = "INSUFFICIENT_FUNDS";
-                    response.errorMessage = "Saldo insufficiente (disponibile: €" + currentBalance + ")";
-                    println@Console("[BANK] ✗ Insufficient funds: €" + currentBalance)()
+                    response.errorMessage = "Saldo insufficiente (disponibile: E" + currentBalance + ")";
+                    println@Console("[BANK] X Insufficient funds: E" + currentBalance)()
                 }
             }
         }
@@ -151,7 +151,7 @@ main {
                         "'Expired reservation - deposit retained', CURRENT_TIMESTAMP)"
                     )(tr);
 
-                    println@Console("[BANK] Expired: deposit retained (€" + session.blockedAmount + ")")()
+                    println@Console("[BANK] Expired: deposit retained (E" + session.blockedAmount + ")")()
 
                 } else {
                     // Rimborso totale
@@ -175,7 +175,7 @@ main {
                         "'Authorization cancelled - full refund', CURRENT_TIMESTAMP)"
                     )(tr);
 
-                    println@Console("[BANK] ✓ Refunded €" + session.blockedAmount + ". Balance: €" + currentBalance + " → €" + newBalance)()
+                    println@Console("[BANK] Refunded E" + session.blockedAmount + ". Balance: E" + currentBalance + " -> E" + newBalance)()
                 }
             };
             sleep@Time(2000)()
@@ -185,7 +185,7 @@ main {
             println@Console("\n[BANK] === COMMIT PAYMENT (" + session.userId + ") ===")();
 
             finalAmount = double(request.finalAmount);
-            println@Console("[BANK] Final amount: €" + finalAmount)();
+            println@Console("[BANK] Final amount: E" + finalAmount)();
 
             synchronized(balanceLock) {
 
@@ -222,8 +222,8 @@ main {
                     response.chargedAmount = finalAmount;
                     response.receiptId     = "RCP_PAY_" + session.userId;
 
-                    println@Console("[BANK] ✓ Paid: €" + finalAmount + " | Refund: €" + refund)();
-                    println@Console("[BANK]   Balance: €" + currentBalance + " → €" + newBalance)()
+                    println@Console("[BANK] Paid: E" + finalAmount + " | Refund: E" + refund)();
+                    println@Console("[BANK]   Balance: E" + currentBalance + " -> E" + newBalance)()
 
                 } else {
                     // Costo > cauzione → addebito extra
@@ -255,14 +255,14 @@ main {
                         response.chargedAmount = finalAmount;
                         response.receiptId     = "RCP_PAY_" + session.userId;
 
-                        println@Console("[BANK] ✓ Paid: €" + finalAmount + " | Extra: €" + extra)();
-                        println@Console("[BANK]   Balance: €" + currentBalance + " → €" + newBalance)()
+                        println@Console("[BANK] Paid: E" + finalAmount + " | Extra: E" + extra)();
+                        println@Console("[BANK]   Balance: E" + currentBalance + " -> E" + newBalance)()
 
                     } else {
                         response.success      = false;
                         response.errorCode    = "INSUFFICIENT_FUNDS";
                         response.errorMessage = "Fondi insufficienti per saldo finale";
-                        println@Console("[BANK] ✗ Insolvency: need €" + extra + ", have €" + currentBalance)()
+                        println@Console("[BANK] X Insolvency: need E" + extra + ", have E" + currentBalance)()
                     }
                 }
             }
@@ -272,7 +272,7 @@ main {
             println@Console("\n[BANK] === COMMIT PENALTY (" + session.userId + ") ===")();
 
             penaltyAmount = double(request.penaltyAmount);
-            println@Console("[BANK] Penalty: €" + penaltyAmount)();
+            println@Console("[BANK] Penalty: E" + penaltyAmount)();
 
             synchronized(balanceLock) {
 
@@ -290,10 +290,10 @@ main {
                         "WHERE user_id = '" + session.userId + "'"
                     )(ur);
 
-                    println@Console("[BANK] Partial penalty: €" + penaltyAmount + " | Refund: €" + refund)()
+                    println@Console("[BANK] Partial penalty: E" + penaltyAmount + " | Refund: E" + refund)()
                 } else {
                     newBalance = currentBalance;
-                    println@Console("[BANK] Full deposit retained: €" + session.blockedAmount)()
+                    println@Console("[BANK] Full deposit retained: E" + session.blockedAmount)()
                 };
 
                 update@Database(
@@ -315,7 +315,7 @@ main {
                 getCurrentTimeMillis@Time()(ts);
                 response.receiptId     = "RCP_PEN_" + session.userId + "_" + ts;
 
-                println@Console("[BANK] Balance: €" + currentBalance + " → €" + newBalance)()
+                println@Console("[BANK] Balance: E" + currentBalance + " -> E" + newBalance)()
             }
         } ]
     };

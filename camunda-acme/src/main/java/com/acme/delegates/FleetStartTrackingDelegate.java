@@ -15,8 +15,9 @@ import org.springframework.http.*;
 public class FleetStartTrackingDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(FleetStartTrackingDelegate.class);
-    private static final String FLEET_URL = "http://127.0.0.1:8082/startTracking";
-
+    //private static final String FLEET_URL = "http://127.0.0.1:8082/startTracking";
+    private static final String FLEET_URL = "http://fleet-gateway:8082/startTracking";
+    
     @Override
     public void execute(DelegateExecution execution) throws Exception {
         

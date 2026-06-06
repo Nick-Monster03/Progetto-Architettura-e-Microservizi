@@ -18,22 +18,13 @@ service CostCalculator {
 
     init {
         
-        //DEBUG
         println@Console( "=== Calculator Service Initialization 2.0 ===" )();
         global.rates.timeRatePerMinute = 0.20;      // €0.20/min
         global.rates.distanceRatePerKm = 0.40;      // €0.40/km
         global.rates.batteryThreshold = 15;         // Soglia 15%
         global.rates.penaltyPercentage = 0.10       // Penale 10%
         
-        //DEBUG
-        // println@Console( "Configured Rates:" )();
-        // println@Console( "  - Time: €" + global.rates.timeRatePerMinute + "/min" )();
-        // println@Console( "  - Distance: €" + global.rates.distanceRatePerKm + "/km" )();
-        // println@Console( "  - Battery threshold: " + global.rates.batteryThreshold + "%" )();
-        // println@Console( "  - Penalty: " + (global.rates.penaltyPercentage * 100) + "%" )();
-        // println@Console( "" )();
-        // println@Console( "Calculator Service ready on port 8010 (SOAP)" )();
-        // println@Console( "========================================" )()
+
     }
 
     main {

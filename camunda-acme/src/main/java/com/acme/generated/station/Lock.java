@@ -9,9 +9,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -46,7 +46,7 @@ public class Lock {
     protected String stationId;
 
     /**
-     * Recupera il valore della proprietà vehicleId.
+     * Gets the value of the vehicleId property.
      * 
      * @return
      *     possible object is
@@ -58,7 +58,7 @@ public class Lock {
     }
 
     /**
-     * Imposta il valore della proprietà vehicleId.
+     * Sets the value of the vehicleId property.
      * 
      * @param value
      *     allowed object is
@@ -70,7 +70,7 @@ public class Lock {
     }
 
     /**
-     * Recupera il valore della proprietà userId.
+     * Gets the value of the userId property.
      * 
      * @return
      *     possible object is
@@ -82,7 +82,7 @@ public class Lock {
     }
 
     /**
-     * Imposta il valore della proprietà userId.
+     * Sets the value of the userId property.
      * 
      * @param value
      *     allowed object is
@@ -94,7 +94,7 @@ public class Lock {
     }
 
     /**
-     * Recupera il valore della proprietà stationId.
+     * Gets the value of the stationId property.
      * 
      * @return
      *     possible object is
@@ -106,7 +106,7 @@ public class Lock {
     }
 
     /**
-     * Imposta il valore della proprietà stationId.
+     * Sets the value of the stationId property.
      * 
      * @param value
      *     allowed object is

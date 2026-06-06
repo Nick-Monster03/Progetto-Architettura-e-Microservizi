@@ -9,9 +9,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -44,7 +44,7 @@ public class CancelAuth {
     protected boolean isExpired;
 
     /**
-     * Recupera il valore della proprietà reason.
+     * Gets the value of the reason property.
      * 
      * @return
      *     possible object is
@@ -56,7 +56,7 @@ public class CancelAuth {
     }
 
     /**
-     * Imposta il valore della proprietà reason.
+     * Sets the value of the reason property.
      * 
      * @param value
      *     allowed object is
@@ -68,7 +68,7 @@ public class CancelAuth {
     }
 
     /**
-     * Recupera il valore della proprietà authToken.
+     * Gets the value of the authToken property.
      * 
      * @return
      *     possible object is
@@ -80,7 +80,7 @@ public class CancelAuth {
     }
 
     /**
-     * Imposta il valore della proprietà authToken.
+     * Sets the value of the authToken property.
      * 
      * @param value
      *     allowed object is
@@ -92,7 +92,7 @@ public class CancelAuth {
     }
 
     /**
-     * Recupera il valore della proprietà isExpired.
+     * Gets the value of the isExpired property.
      * 
      */
     public boolean isIsExpired() {
@@ -100,7 +100,7 @@ public class CancelAuth {
     }
 
     /**
-     * Imposta il valore della proprietà isExpired.
+     * Sets the value of the isExpired property.
      * 
      */
     public void setIsExpired(boolean value) {
