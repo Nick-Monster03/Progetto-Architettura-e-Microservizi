@@ -8,9 +8,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Java class for VehicleInfo complex type.
+ * <p>Classe Java per VehicleInfo complex type.
  * 
- * <p>The following schema fragment specifies the expected content contained within this class.
+ * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
  * 
  * <pre>
  * &lt;complexType name="VehicleInfo"&gt;
@@ -43,7 +43,7 @@ public class VehicleInfo {
     protected String status;
 
     /**
-     * Gets the value of the vehicleId property.
+     * Recupera il valore della proprietà vehicleId.
      * 
      * @return
      *     possible object is
@@ -55,7 +55,7 @@ public class VehicleInfo {
     }
 
     /**
-     * Sets the value of the vehicleId property.
+     * Imposta il valore della proprietà vehicleId.
      * 
      * @param value
      *     allowed object is
@@ -67,7 +67,7 @@ public class VehicleInfo {
     }
 
     /**
-     * Gets the value of the battery property.
+     * Recupera il valore della proprietà battery.
      * 
      */
     public double getBattery() {
@@ -75,7 +75,7 @@ public class VehicleInfo {
     }
 
     /**
-     * Sets the value of the battery property.
+     * Imposta il valore della proprietà battery.
      * 
      */
     public void setBattery(double value) {
@@ -83,7 +83,7 @@ public class VehicleInfo {
     }
 
     /**
-     * Gets the value of the status property.
+     * Recupera il valore della proprietà status.
      * 
      * @return
      *     possible object is
@@ -95,7 +95,7 @@ public class VehicleInfo {
     }
 
     /**
-     * Sets the value of the status property.
+     * Imposta il valore della proprietà status.
      * 
      * @param value
      *     allowed object is

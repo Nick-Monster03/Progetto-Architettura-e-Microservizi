@@ -6,6 +6,7 @@ import org.apache.cxf.interceptor.transform.TransformInInterceptor;
 import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import jakarta.xml.ws.Holder;
@@ -15,95 +16,109 @@ import java.util.Map;
 
 @Component
 public class BankSoapClient {
-    
+
     private static final Logger log = LoggerFactory.getLogger(BankSoapClient.class);
-    private static final String BANK_SERVICE_URL = "http://127.0.0.1:8008";
-    
+
+    @Value("${services.bank.url}")
+    private String bankServiceUrl;
+
     private BankPort bankPort;
-    
+
     @PostConstruct
     public void init() {
         JaxWsProxyFactoryBean factory = new JaxWsProxyFactoryBean();
         factory.setServiceClass(BankPort.class);
-        factory.setAddress(BANK_SERVICE_URL);
-        
+        factory.setAddress(bankServiceUrl);
+
         TransformInInterceptor transformInterceptor = new TransformInInterceptor();
         Map<String, String> transformMap = new HashMap<>();
-        
-        transformMap.put("preAuthorizeResponse", "{bank.acme.com.xsd}preAuthorizeResponse");
+        transformMap.put("preAuthorizeResponse",  "{bank.acme.com.xsd}preAuthorizeResponse");
         transformMap.put("commitPaymentResponse", "{bank.acme.com.xsd}commitPaymentResponse");
         transformMap.put("commitPenaltyResponse", "{bank.acme.com.xsd}commitPenaltyResponse");
-        
         transformInterceptor.setInTransformElements(transformMap);
         factory.getInInterceptors().add(transformInterceptor);
-        
+
         bankPort = (BankPort) factory.create();
-        
-        log.info("Bank SOAP Client initialized at: {}", BANK_SERVICE_URL);
+        log.info("Bank SOAP Client inizializzato su: {}", bankServiceUrl);
     }
-    
-   
-    public PreAuthorizeResponse preAuthorize(String userId, double amount, String cardNumber, boolean isRiservation) {
-        Holder<Boolean> success = new Holder<>();
-        Holder<String> authTokenHolder = new Holder<>();
-        Holder<String> errorMessage = new Holder<>();
-        Holder<String> errorCode = new Holder<>();
-        Holder<Double> blockedAmount = new Holder<>();
-        
-        bankPort.preAuthorize(isRiservation, amount, userId, cardNumber, 
-                              success, authTokenHolder, errorMessage, errorCode, blockedAmount);
-        
-        PreAuthorizeResponse response = new PreAuthorizeResponse();
-        response.setSuccess(success.value);
-        response.setAuthToken(authTokenHolder.value);
-        response.setErrorMessage(errorMessage.value);
-        response.setErrorCode(errorCode.value);
-        response.setBlockedAmount(blockedAmount.value);
-        
-        return response;
+
+    // ── preAuthorize ────────────────────────────────────────────────────────
+    // Firma CXF: (boolean isRiservation, double amount, String userId,
+    //             String cardNumber, Holder<Boolean> success,
+    //             Holder<String> authToken, Holder<String> errorMessage,
+    //             Holder<String> errorCode, Holder<Double> blockedAmount)
+    public PreAuthorizeResponse preAuthorize(String userId, double amount,
+                                              String cardNumber, boolean isReservation) {
+        Holder<Boolean> success       = new Holder<>();
+        Holder<String>  authToken     = new Holder<>();
+        Holder<String>  errorMessage  = new Holder<>();
+        Holder<String>  errorCode     = new Holder<>();
+        Holder<Double>  blockedAmount = new Holder<>();
+
+        bankPort.preAuthorize(isReservation, amount, userId, cardNumber,
+                              success, authToken, errorMessage, errorCode, blockedAmount);
+
+        PreAuthorizeResponse resp = new PreAuthorizeResponse();
+        resp.setSuccess(Boolean.TRUE.equals(success.value));
+        resp.setAuthToken(authToken.value);
+        resp.setErrorMessage(errorMessage.value);
+        resp.setErrorCode(errorCode.value);
+        resp.setBlockedAmount(blockedAmount.value != null ? blockedAmount.value : 0.0);
+        return resp;
     }
-    
-    public void cancelAuth(String authToken, boolean isExpired, String reason) {
-        bankPort.cancelAuth(reason, authToken, isExpired);
-    }
-    
- 
-    public CommitPaymentResponse commitPayment(String authToken, double finalAmount, int duration, double kilometers, int batteryLevel, Double penalty) {
-        Holder<Boolean> success = new Holder<>();
-        Holder<Double> chargedAmount = new Holder<>();
-        Holder<String> errorMessage = new Holder<>();
-        Holder<String> errorCode = new Holder<>();
-        Holder<String> receiptId = new Holder<>();
-        
-        bankPort.commitPayment(duration, finalAmount, penalty, authToken, kilometers, batteryLevel, 
+
+    // ── commitPayment ───────────────────────────────────────────────────────
+    // Firma CXF: (int duration, double finalAmount, Double penalty,
+    //             String authToken, double kilometers, int batteryLevel,
+    //             Holder<Boolean> success, Holder<Double> chargedAmount,
+    //             Holder<String> errorMessage, Holder<String> errorCode,
+    //             Holder<String> receiptId)
+    public CommitPaymentResponse commitPayment(String authToken, double finalAmount,
+                                            int duration, double kilometers,
+                                            int batteryLevel, Double penalty) {
+        Holder<Boolean> success       = new Holder<>();
+        Holder<Double>  chargedAmount = new Holder<>();
+        Holder<String>  errorMessage  = new Holder<>();
+        Holder<String>  errorCode     = new Holder<>();
+        Holder<String>  receiptId     = new Holder<>();
+
+        bankPort.commitPayment(duration, finalAmount, penalty, authToken, kilometers, batteryLevel,
                                success, chargedAmount, errorMessage, errorCode, receiptId);
-        
-        CommitPaymentResponse response = new CommitPaymentResponse();
-        response.setSuccess(success.value);
-        response.setChargedAmount(chargedAmount.value);
-        response.setErrorMessage(errorMessage.value);
-        response.setErrorCode(errorCode.value);
-        response.setReceiptId(receiptId.value);
-        
-        return response;
+
+        CommitPaymentResponse resp = new CommitPaymentResponse();
+        resp.setSuccess(Boolean.TRUE.equals(success.value));
+        resp.setChargedAmount(chargedAmount.value != null ? chargedAmount.value : 0.0);
+        resp.setErrorMessage(errorMessage.value);
+        resp.setErrorCode(errorCode.value);
+        resp.setReceiptId(receiptId.value);
+        return resp;
     }
-    
-   
-    public CommitPenaltyResponse commitPenalty(String authToken, double penaltyAmount, String reason) {
-        Holder<Boolean> success = new Holder<>();
-        Holder<Double> chargedAmount = new Holder<>();
-        Holder<String> errorMessage = new Holder<>();
-        Holder<String> receiptId = new Holder<>();
-        
-        bankPort.commitPenalty(reason, authToken, penaltyAmount, 
+
+    // ── commitPenalty ───────────────────────────────────────────────────────
+    // Firma CXF: (String reason, String authToken, double penaltyAmount,
+    //             Holder<Boolean> success, Holder<Double> chargedAmount,
+    //             Holder<String> errorMessage, Holder<String> receiptId)
+    public CommitPenaltyResponse commitPenalty(String authToken, double penaltyAmount,
+                                                String reason) {
+        Holder<Boolean> success       = new Holder<>();
+        Holder<Double>  chargedAmount = new Holder<>();
+        Holder<String>  errorMessage  = new Holder<>();
+        Holder<String>  receiptId     = new Holder<>();
+
+        bankPort.commitPenalty(reason, authToken, penaltyAmount,
                                success, chargedAmount, errorMessage, receiptId);
-        
-        CommitPenaltyResponse response = new CommitPenaltyResponse();
-        response.setSuccess(success.value);
-        response.setChargedAmount(chargedAmount.value);
-        response.setErrorMessage(errorMessage.value);
-        response.setReceiptId(receiptId.value);
-        
-        return response;
+
+        CommitPenaltyResponse resp = new CommitPenaltyResponse();
+        resp.setSuccess(Boolean.TRUE.equals(success.value));
+        resp.setChargedAmount(chargedAmount.value != null ? chargedAmount.value : 0.0);
+        resp.setErrorMessage(errorMessage.value);
+        resp.setReceiptId(receiptId.value);
+        return resp;
+    }
+
+    // ── cancelAuth ──────────────────────────────────────────────────────────
+    // Firma CXF: (String reason, String authToken, boolean isExpired)  — @Oneway
+    public void cancelAuth(String authToken, String reason, boolean isExpired) {
+        bankPort.cancelAuth(reason, authToken, isExpired);
     }
 }

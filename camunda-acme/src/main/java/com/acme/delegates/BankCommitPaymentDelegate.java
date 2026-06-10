@@ -36,7 +36,14 @@ public class BankCommitPaymentDelegate implements JavaDelegate {
         log.info("Total Penalty: €{}", totalPenalty);
 
         try {
-            CommitPaymentResponse response = bankSoapClient.commitPayment(token, finalAmount, duration, kilometers, finalBattery, totalPenalty);
+            CommitPaymentResponse response = bankSoapClient.commitPayment(
+                token,
+                finalAmount != null ? finalAmount : 0.0,
+                duration != null ? duration : 0,
+                kilometers != null ? kilometers : 0.0,
+                finalBattery != null ? finalBattery : 0,
+                totalPenalty
+            );
             
             boolean success = response.isSuccess();
             execution.setVariable("paymentSuccess", success);

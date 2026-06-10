@@ -2,8 +2,31 @@ version: '3.8'
 
 services:
 
+  # ── Database ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: camunda
+      POSTGRES_USER: camunda
+      POSTGRES_PASSWORD: camunda
+    ports:
+      - "5433:5432"
+    networks:
+      - acme-net
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camunda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Servizi Jolie ──────────────────────────────────────────────────────────
+
   user-service:
-    build: 
+    build:
       context: ../src/user-management
     container_name: acme-user-service
     ports:
@@ -11,7 +34,6 @@ services:
     networks:
       - acme-net
 
-  # Servizio Bancario (Jolie)
   bank-service:
     build:
       context: ../src/bank-jolie
@@ -24,7 +46,20 @@ services:
     networks:
       - acme-net
 
-  # Tracking Microservice (Jolie - Internal)
+  station-service:
+    build:
+      context: ../src/stations
+    container_name: station-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - acme-net
+
+  # ── Fleet Management cluster ───────────────────────────────────────────────
+
   tracking-service:
     build:
       context: ../src/fleet-management/tracking
@@ -37,7 +72,6 @@ services:
     networks:
       - acme-net
 
-  # Battery Microservice (Jolie - Internal)
   battery-service:
     build:
       context: ../src/fleet-management/battery
@@ -50,7 +84,6 @@ services:
     networks:
       - acme-net
 
-  # Calculator Service (Jolie - Internal)
   calculator-service:
     build:
       context: ../src/service-utils
@@ -60,7 +93,19 @@ services:
     networks:
       - acme-net
 
-  # Fleet Gateway (Jolie - REST API + SOAP Client)
+  simulator-service:
+    build:
+      context: ../src
+      dockerfile: simulation/Dockerfile
+    container_name: simulator-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      - tracking-service
+      - battery-service
+    networks:
+      - acme-net
+
   fleet-gateway:
     build:
       context: ../src
@@ -80,77 +125,48 @@ services:
     networks:
       - acme-net
 
-  station-service:
+  # ── Orchestratore BPMN (Camunda + Spring Boot) ─────────────────────────────
+  camunda-acme:
     build:
-      context: ../src/stations
-    container_name: station-service
+      context: ../camunda-acme
+      dockerfile: Dockerfile
+    container_name: camunda-acme
     ports:
-      - "8083:8083"
+      - "8080:8080"
+    environment:
+      # Attiva il profilo Spring "docker" che usa application-docker.yml
+      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       postgres:
         condition: service_healthy
+      bank-service:
+        condition: service_started
+      station-service:
+        condition: service_started
+      fleet-gateway:
+        condition: service_started
+      calculator-service:
+        condition: service_started
     networks:
       - acme-net
-
-  # Simulator Service 
-  simulator-service:  
-    build:
-      context: ../src
-      dockerfile: simulation/Dockerfile
-    container_name: simulator-service
-    ports:
-      - "8086:8086"
-    depends_on:
-      - tracking-service
-      - battery-service
-    networks:
-      - acme-net
-
-  # Database PostgreSQL
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: camunda
-      POSTGRES_USER: camunda
-      POSTGRES_PASSWORD: camunda
-    ports:
-      - "5433:5432"
-    networks:
-      - acme-net
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+    # Camunda impiega ~30s ad avviarsi: healthcheck generoso
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U camunda"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
-  # Camunda BPMS (commentato)
-  # camunda:
-  #   image: camunda/camunda-bpm-platform:run-latest
-  #   container_name: acme-camunda
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - CAMUNDA_bpm_run_cors_enabled=true
-  #     - DB_DRIVER=org.postgresql.Driver
-  #     - DB_URL=jdbc:postgresql://postgres:5432/camunda
-  #     - DB_USERNAME=camunda
-  #     - DB_PASSWORD=camunda
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - acme-net
-
-  # Client Frontend 
+  # ── Client Web ─────────────────────────────────────────────────────────────
   client-app:
     build:
       context: ../src/client-app
     container_name: client-app
     ports:
       - "3000:3000"
+    depends_on:
+      - fleet-gateway
+      - camunda-acme
     networks:
       - acme-net
 
