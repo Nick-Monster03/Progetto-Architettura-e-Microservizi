@@ -8,9 +8,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -45,7 +45,7 @@ public class CommitPenaltyResponse {
     protected String receiptId;
 
     /**
-     * Recupera il valore della proprietà success.
+     * Gets the value of the success property.
      * 
      */
     public boolean isSuccess() {
@@ -53,7 +53,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Imposta il valore della proprietà success.
+     * Sets the value of the success property.
      * 
      */
     public void setSuccess(boolean value) {
@@ -61,7 +61,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Recupera il valore della proprietà chargedAmount.
+     * Gets the value of the chargedAmount property.
      * 
      * @return
      *     possible object is
@@ -73,7 +73,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Imposta il valore della proprietà chargedAmount.
+     * Sets the value of the chargedAmount property.
      * 
      * @param value
      *     allowed object is
@@ -85,7 +85,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Recupera il valore della proprietà errorMessage.
+     * Gets the value of the errorMessage property.
      * 
      * @return
      *     possible object is
@@ -97,7 +97,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Imposta il valore della proprietà errorMessage.
+     * Sets the value of the errorMessage property.
      * 
      * @param value
      *     allowed object is
@@ -109,7 +109,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Recupera il valore della proprietà receiptId.
+     * Gets the value of the receiptId property.
      * 
      * @return
      *     possible object is
@@ -121,7 +121,7 @@ public class CommitPenaltyResponse {
     }
 
     /**
-     * Imposta il valore della proprietà receiptId.
+     * Sets the value of the receiptId property.
      * 
      * @param value
      *     allowed object is

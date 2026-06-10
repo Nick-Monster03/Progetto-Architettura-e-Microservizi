@@ -2,45 +2,35 @@ spring:
   application:
     name: acme-camunda-orchestrator
   
-  # Configurazione Database PostgreSQL
   datasource:
-    url: jdbc:postgresql://localhost:5432/camunda
+    # CORRETTO: Porta 5433 (quella mappata sul PC)
+    url: jdbc:postgresql://localhost:5433/camunda
     username: camunda
     password: camunda
     driver-class-name: org.postgresql.Driver
   
-  # JPA
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
 
-# Configurazione Camunda BPM
 camunda:
   bpm:
-    # Admin user (per accedere a Cockpit/Tasklist)
     admin-user:
       id: admin
       password: admin
       firstName: Admin
       lastName: User
-    
-    # Auto-deploy dei processi BPMN dalla cartella resources/bpmn
     auto-deployment-enabled: true
-    
     client:
       base-url: http://localhost:8080/engine-rest
-    # Database
     database:
       schema-update: true
       type: postgres
-    
-    history-level: audit
-
+    history-level: full
     job-execution:
       enabled: true
 
-# Server
 server:
   port: 8080
   servlet:
@@ -48,7 +38,6 @@ server:
     session:
       timeout: 30m
 
-# Logging
 logging:
   level:
     root: INFO
@@ -56,19 +45,19 @@ logging:
     org.camunda: INFO
     org.springframework: INFO
 
-# Configurazione servizi esterni (SOAP/REST)
+# CORRETTO: Sostituiti tutti i nomi dei container con 'localhost'
 services:
   bank:
-    url: http://bank-service:8008
-    wsdl: http://bank-service:8008?wsdl
+    url: http://localhost:8008
+    wsdl: http://localhost:8008?wsdl
   
   station:
-    url: http://station-service:8083
-    wsdl: http://station-service:8083?wsdl
+    url: http://localhost:8083
+    wsdl: http://localhost:8083?wsdl
   
   fleet:
-    url: http://fleet-gateway:8082
+    url: http://localhost:8082
   
   calculator:
-    url: http://calculator-service:8089
-    wsdl: http://calculator-service:8089?wsdl
+    url: http://localhost:8089
+    wsdl: http://localhost:8089?wsdl

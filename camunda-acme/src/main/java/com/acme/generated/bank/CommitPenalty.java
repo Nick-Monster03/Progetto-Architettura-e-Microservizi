@@ -9,9 +9,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Classe Java per anonymous complex type.
+ * <p>Java class for anonymous complex type.
  * 
- * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
+ * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -45,7 +45,7 @@ public class CommitPenalty {
     protected double penaltyAmount;
 
     /**
-     * Recupera il valore della proprietà reason.
+     * Gets the value of the reason property.
      * 
      * @return
      *     possible object is
@@ -57,7 +57,7 @@ public class CommitPenalty {
     }
 
     /**
-     * Imposta il valore della proprietà reason.
+     * Sets the value of the reason property.
      * 
      * @param value
      *     allowed object is
@@ -69,7 +69,7 @@ public class CommitPenalty {
     }
 
     /**
-     * Recupera il valore della proprietà authToken.
+     * Gets the value of the authToken property.
      * 
      * @return
      *     possible object is
@@ -81,7 +81,7 @@ public class CommitPenalty {
     }
 
     /**
-     * Imposta il valore della proprietà authToken.
+     * Sets the value of the authToken property.
      * 
      * @param value
      *     allowed object is
@@ -93,7 +93,7 @@ public class CommitPenalty {
     }
 
     /**
-     * Recupera il valore della proprietà penaltyAmount.
+     * Gets the value of the penaltyAmount property.
      * 
      */
     public double getPenaltyAmount() {
@@ -101,7 +101,7 @@ public class CommitPenalty {
     }
 
     /**
-     * Imposta il valore della proprietà penaltyAmount.
+     * Sets the value of the penaltyAmount property.
      * 
      */
     public void setPenaltyAmount(double value) {

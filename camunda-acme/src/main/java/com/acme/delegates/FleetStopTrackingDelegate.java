@@ -16,7 +16,8 @@ import java.util.Map;
 public class FleetStopTrackingDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(FleetStopTrackingDelegate.class);
-    private static final String FLEET_URL = "http://127.0.0.1:8082/stopTracking";
+    //private static final String FLEET_URL = "http://127.0.0.1:8082/stopTracking";
+    private static final String FLEET_URL = "http://fleet-gateway:8082/stopTracking";
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {

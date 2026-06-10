@@ -18,6 +18,9 @@ services:
     container_name: bank-service
     ports:
       - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -28,6 +31,9 @@ services:
     container_name: tracking-service
     expose:
       - "8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -38,6 +44,9 @@ services:
     container_name: battery-service
     expose:
       - "8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -77,6 +86,9 @@ services:
     container_name: station-service
     ports:
       - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -93,8 +105,8 @@ services:
       - battery-service
     networks:
       - acme-net
-    
-  # Database per Camunda (Con Healthcheck!)
+
+  # Database PostgreSQL
   postgres:
     image: postgres:15
     environment:
@@ -102,7 +114,7 @@ services:
       POSTGRES_USER: camunda
       POSTGRES_PASSWORD: camunda
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - acme-net
     volumes:
@@ -114,7 +126,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Camunda BPMS (Configurato per Postgres)
+  # Camunda BPMS (commentato)
   # camunda:
   #   image: camunda/camunda-bpm-platform:run-latest
   #   container_name: acme-camunda
@@ -129,12 +141,6 @@ services:
   #   depends_on:
   #     postgres:
   #       condition: service_healthy
-  #     bank-service:
-  #       condition: service_started
-  #     station-service:
-  #       condition: service_started
-  #     fleet-gateway:
-  #       condition: service_started
   #   networks:
   #     - acme-net
 
@@ -147,7 +153,6 @@ services:
       - "3000:3000"
     networks:
       - acme-net
-
 
 networks:
   acme-net:
