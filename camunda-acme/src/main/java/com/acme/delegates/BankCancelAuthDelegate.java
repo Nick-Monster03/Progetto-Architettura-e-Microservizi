@@ -29,7 +29,7 @@ public class BankCancelAuthDelegate implements JavaDelegate{
 
         try {
 
-            bankSoapClient.cancelAuth(token, isExpired, "User cancellation");
+            bankSoapClient.cancelAuth(token, "User cancellation", isExpired);
             log.info("Cancel Auth completed");
             
         } catch (Exception e) {

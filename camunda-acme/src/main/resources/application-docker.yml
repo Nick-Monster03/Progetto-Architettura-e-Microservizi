@@ -1,14 +1,14 @@
 spring:
   application:
     name: acme-camunda-orchestrator
-  
+
   datasource:
-    # CORRETTO: Porta 5433 (quella mappata sul PC)
-    url: jdbc:postgresql://localhost:5433/camunda
+    # Dentro Docker: il container postgres è raggiungibile per nome, porta interna 5432
+    url: jdbc:postgresql://postgres:5432/camunda
     username: camunda
     password: camunda
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -45,19 +45,19 @@ logging:
     org.camunda: INFO
     org.springframework: INFO
 
-# CORRETTO: Sostituiti tutti i nomi dei container con 'localhost'
+# URL dei servizi con nomi Docker (non localhost)
 services:
   bank:
-    url: http://localhost:8008
-    wsdl: http://localhost:8008?wsdl
-  
+    url: http://bank-service:8008
+    wsdl: http://bank-service:8008?wsdl
+
   station:
-    url: http://localhost:8083
-    wsdl: http://localhost:8083?wsdl
-  
+    url: http://station-service:8083
+    wsdl: http://station-service:8083?wsdl
+
   fleet:
-    url: http://localhost:8082
-  
+    url: http://fleet-gateway:8082
+
   calculator:
-    url: http://localhost:8089
-    wsdl: http://localhost:8089?wsdl
+    url: http://calculator-service:8089
+    wsdl: http://calculator-service:8089?wsdl
