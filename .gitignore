@@ -20,3 +20,5 @@ src/user-managment/
 .vscode/
 node_modules/
 camunda-acme/target/
+camunda-acme/target/
+camunda-acme/src/main/java/com/acme/generated/
