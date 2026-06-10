@@ -8,9 +8,9 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Java class for anonymous complex type.
+ * <p>Classe Java per anonymous complex type.
  * 
- * <p>The following schema fragment specifies the expected content contained within this class.
+ * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
  * 
  * <pre>
  * &lt;complexType&gt;
@@ -48,7 +48,7 @@ public class PreAuthorizeResponse {
     protected Double blockedAmount;
 
     /**
-     * Gets the value of the success property.
+     * Recupera il valore della proprietà success.
      * 
      */
     public boolean isSuccess() {
@@ -56,7 +56,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Sets the value of the success property.
+     * Imposta il valore della proprietà success.
      * 
      */
     public void setSuccess(boolean value) {
@@ -64,7 +64,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Gets the value of the authToken property.
+     * Recupera il valore della proprietà authToken.
      * 
      * @return
      *     possible object is
@@ -76,7 +76,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Sets the value of the authToken property.
+     * Imposta il valore della proprietà authToken.
      * 
      * @param value
      *     allowed object is
@@ -88,7 +88,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Gets the value of the errorMessage property.
+     * Recupera il valore della proprietà errorMessage.
      * 
      * @return
      *     possible object is
@@ -100,7 +100,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Sets the value of the errorMessage property.
+     * Imposta il valore della proprietà errorMessage.
      * 
      * @param value
      *     allowed object is
@@ -112,7 +112,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Gets the value of the errorCode property.
+     * Recupera il valore della proprietà errorCode.
      * 
      * @return
      *     possible object is
@@ -124,7 +124,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Sets the value of the errorCode property.
+     * Imposta il valore della proprietà errorCode.
      * 
      * @param value
      *     allowed object is
@@ -136,7 +136,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Gets the value of the blockedAmount property.
+     * Recupera il valore della proprietà blockedAmount.
      * 
      * @return
      *     possible object is
@@ -148,7 +148,7 @@ public class PreAuthorizeResponse {
     }
 
     /**
-     * Sets the value of the blockedAmount property.
+     * Imposta il valore della proprietà blockedAmount.
      * 
      * @param value
      *     allowed object is

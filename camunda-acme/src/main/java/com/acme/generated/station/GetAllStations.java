@@ -9,16 +9,16 @@ import jakarta.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Java class for anonymous complex type.
+ * <p>Classe Java per anonymous complex type.
  * 
- * <p>The following schema fragment specifies the expected content contained within this class.
+ * <p>Il seguente frammento di schema specifica il contenuto previsto contenuto in questa classe.
  * 
  * <pre>
  * &lt;complexType&gt;
  *   &lt;complexContent&gt;
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType"&gt;
  *       &lt;sequence&gt;
- *         &lt;element name="stations" type="{http://www.w3.org/2001/XMLSchema}string"/&gt;
+ *         &lt;element name="request" type="{http://www.w3.org/2001/XMLSchema}string"/&gt;
  *       &lt;/sequence&gt;
  *     &lt;/restriction&gt;
  *   &lt;/complexContent&gt;
@@ -29,36 +29,36 @@ import jakarta.xml.bind.annotation.XmlType;
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "", propOrder = {
-    "stations"
+    "request"
 })
 @XmlRootElement(name = "getAllStations")
 public class GetAllStations {
 
     @XmlElement(required = true)
-    protected String stations;
+    protected String request;
 
     /**
-     * Gets the value of the stations property.
+     * Recupera il valore della proprietà request.
      * 
      * @return
      *     possible object is
      *     {@link String }
      *     
      */
-    public String getStations() {
-        return stations;
+    public String getRequest() {
+        return request;
     }
 
     /**
-     * Sets the value of the stations property.
+     * Imposta il valore della proprietà request.
      * 
      * @param value
      *     allowed object is
      *     {@link String }
      *     
      */
-    public void setStations(String value) {
-        this.stations = value;
+    public void setRequest(String value) {
+        this.request = value;
     }
 
 }
