@@ -7,6 +7,7 @@ type VehicleInfo {
     .vehicleId: string
     .location: LocationType
     .status: string // AVAILABLE, RENTED, RESERVED
+    .totalKm: double
 }
 
 type VehicleList {
@@ -34,6 +35,5 @@ interface TrackingInterface {
         setStatus( SetStatusRequest )( void ),
         getInfo( GetInfoRequest )( VehicleInfo ),
         updateLocation( UpdateLocationRequest )( void ),
-        
         getVehicleList( void )( VehicleList )
 }

@@ -1,5 +1,6 @@
 include "BatteryInterface.iol"
 include "console.iol"
+include "database.iol"
 
 service BatteryService {
     execution: concurrent
@@ -8,7 +9,6 @@ service BatteryService {
         // Usa 0.0.0.0 per essere raggiungibile dagli altri container (fix Docker)
         Location: "socket://0.0.0.0:8085"
         
-        // Usa SOAP come richiesto dalla traccia del progetto
         Protocol: soap {
             .wsdl = "./BatteryService.wsdl";
             .wsdl.port = "BatteryServicePort";
@@ -16,23 +16,49 @@ service BatteryService {
         }
         Interfaces: BatteryInterface
     }
-    
+
     init {
-        // Dati iniziali
-        global.batteries.("v-test") = 100
+        with (connectionInfo) {
+            .username = "camunda";
+            .password = "camunda";
+            .host = "postgres";   // nome servizio Docker
+            .port = 5432;         // porta interna container
+            .database = "camunda";
+            .driver = "postgresql"
+        };
+        connect@Database(connectionInfo)();
+        println@Console("Battery Service avviato su porta 8085 (SOAP)")();
+        println@Console("Connected to camunda DB")()
     }
 
     main {
+
         [ updateBattery( request )( response ) {
-            global.batteries.(request.vehicleId) = request.level;
-            println@Console("[BATTERY] Aggiornata " + request.vehicleId + ": " + request.level + "%")()
+            vid = request.vehicleId;
+            lvl = request.level;
+
+            update@Database(
+                "UPDATE vehicles SET battery_level = " + lvl +
+                ", last_updated = CURRENT_TIMESTAMP " +
+                "WHERE vehicle_id = '" + vid + "'"
+            )(ur);
+
+            println@Console("[BATTERY] Aggiornata " + vid + ": " + lvl + "%")()
         } ]
 
-        [ getBattery( request )( level ) {
-            if ( is_defined( global.batteries.(request.vehicleId) ) ) {
-                level = global.batteries.(request.vehicleId)
+        [ getBattery( request )( response ) {
+            vid = request.vehicleId;
+
+            query@Database(
+                "SELECT battery_level FROM vehicles WHERE vehicle_id = '" + vid + "'"
+            )(res);
+
+            if (#res.row == 1) {
+                response.level = int(res.row[0].battery_level);
+                println@Console("[BATTERY] GetBattery per " + vid + ": " + response.level + "%")()
             } else {
-                level = 100 
+                println@Console("[BATTERY] GetBattery per " + vid + ": Veicolo non trovato, restituisco 0")();
+                response.level = 0
             }
         } ]
     }

@@ -1,154 +1,324 @@
-include "BankInterface.iol"
 include "console.iol"
+include "database.iol"
+include "string_utils.iol"
 include "time.iol"
+include "BankInterface.iol"
 
-service BankService {
-    
-    execution: concurrent
+// ============================================================
+// STATUS ENUM - authorizations.status
+// ACTIVE    → Pre-auth attiva, noleggio in corso
+// CANCELLED → Annullato, cauzione restituita
+// COMMITTED → Completato, pagamento/penale eseguito
+// ============================================================
 
-    inputPort BankPort {
-        location: "socket://0.0.0.0:8008"
-        
-        protocol: soap {
-            .wsdl = "./BankService.wsdl";
-            .wsdl.port = "BankPortServicePort";
-            .dropRootValue = true
+execution { concurrent }
+
+inputPort BankPort {
+    Location: "socket://0.0.0.0:8008"
+    Protocol: soap {
+        .wsdl = "BankService.wsdl"
+    }
+    Interfaces: BankInterface
+}
+
+cset {
+    authToken: PreAuthorizeResponse.authToken
+               CommitPaymentRequest.authToken
+               CommitPenaltyRequest.authToken
+               CancelAuthRequest.authToken
+}
+
+init {
+    with (connectionInfo) {
+        .username = "camunda";
+        .password = "camunda";
+        .host = "postgres";
+        .port = 5432;
+        .database = "camunda";
+        .driver = "postgresql"
+    };
+    connect@Database(connectionInfo)();
+
+    global.transactionCounter = 0;
+    println@Console("Bank Service avviato (Porta 8008)")();
+    println@Console("Connected to camunda DB")()
+}
+
+main {
+
+    preAuthorize(request)(response) {
+
+        userId = request.userId;
+        amount = double(request.amount);
+        session.userId = userId;
+
+        println@Console("\n[BANK] === PRE-AUTHORIZE (" + userId + ") ===")();
+
+        synchronized(balanceLock) {
+
+            query@Database(
+                "SELECT balance FROM user_bank WHERE user_id = '" + userId + "'"
+            )(balRes);
+
+            if (#balRes.row == 0) {
+                response.success      = false;
+                response.errorCode    = "USER_NOT_FOUND";
+                response.errorMessage = "Utente non trovato";
+                println@Console("[BANK] X User not found: " + userId)()
+            } else {
+                currentBalance = double(balRes.row[0].balance);
+                println@Console("[BANK] Current balance: E" + currentBalance)();
+
+                if (currentBalance >= amount) {
+
+                    getCurrentTimeMillis@Time()(timestamp);
+                    global.transactionCounter++;
+                    authToken = "TOK_" + userId + "_" + global.transactionCounter;
+
+                    csets.authToken       = authToken;
+                    session.authToken     = authToken;
+                    session.blockedAmount = amount;
+
+                    // 1. Scala saldo
+                    newBalance = currentBalance - amount;
+                    update@Database(
+                        "UPDATE user_bank SET balance = " + newBalance + ", updated_at = CURRENT_TIMESTAMP " +
+                        "WHERE user_id = '" + userId + "'"
+                    )(ur);
+
+                    // 2. Crea autorizzazione
+                    update@Database(
+                        "INSERT INTO authorizations (auth_token, user_id, is_reservation, status, expires_at) " +
+                        "VALUES ('" + authToken + "', '" + userId + "', " + request.isRiservation + ", 'ACTIVE', " +
+                        "CURRENT_TIMESTAMP + INTERVAL '30 minutes')"
+                    )(ar);
+
+                    // 3. Registra transazione
+                    negAmount = amount * (-1);
+                    update@Database(
+                        "INSERT INTO transactions (auth_token, user_id, transaction_type, amount, " +
+                        "balance_before, balance_after, description, created_at) " +
+                        "VALUES ('" + authToken + "', '" + userId + "', 'PRE_AUTH', " + negAmount + ", " +
+                        currentBalance + ", " + newBalance + ", 'Pre-authorization blocked', CURRENT_TIMESTAMP)"
+                    )(tr);
+
+                    response.success       = true;
+                    response.authToken     = authToken;
+                    response.blockedAmount = amount;
+                    response.errorCode     = "";
+                    response.errorMessage  = "";
+
+                    println@Console("[BANK] Token:   " + authToken)();
+                    println@Console("[BANK]   Blocked: E" + amount)();
+                    println@Console("[BANK]   Balance: E" + currentBalance + " -> E" + newBalance)()
+
+                } else {
+                    response.success      = false;
+                    response.errorCode    = "INSUFFICIENT_FUNDS";
+                    response.errorMessage = "Saldo insufficiente (disponibile: E" + currentBalance + ")";
+                    println@Console("[BANK] X Insufficient funds: E" + currentBalance)()
+                }
+            }
         }
-        interfaces: BankInterface
-    }
+    };
 
-    // Correlation Set: lega il paymentToken generato in 'preAuthorize' 
-    // a quello ricevuto in 'commitPayment'
-    cset {
-        paymentToken: PaymentRequest.paymentToken
-    }
+    if (response.success) {
+        undef(response);
 
-    // --- LOGICA DI BUSINESS ---
+        [ cancelAuth(request) ] {
+            println@Console("\n[BANK] === CANCEL AUTH (" + session.userId + ") ===")();
 
-    init {
-        // Inizializzazione Database Utenti fittizio
-        global.users[0].name = "Mario";
-        global.users[0].balance = 1000.0;
-        global.users[0].state = "active";
-        
-        global.users[1].name = "Luigi";
-        global.users[1].balance = 5.0;
-        global.users[1].state = "active";
-        
-        global.users[2].name = "Wario";
-        global.users[2].balance = 10000.0;
-        global.users[2].state = "active";
+            synchronized(balanceLock) {
 
-        global.users[3].name = "Waluigi";
-        global.users[3].balance = 500.0; 
-        global.users[3].state = "suspended";
-        
-        global.CAUZIONE_STD = 10.0
-    }
+                query@Database(
+                    "SELECT balance FROM user_bank WHERE user_id = '" + session.userId + "'"
+                )(balRes);
+                currentBalance = double(balRes.row[0].balance);
 
-    main {
-        // Fase 1: Pre-autorizzazione (apre la sessione)
-        preAuthorize( request )( response ) {
-            client = request.clientName;
-            
-            install(InsufficientFunds =>
-                println@Console("FAIL: Non ci sono abbastanza fondi: " + client)()
-            );
+                if (request.isExpired) {
+                    // Scaduta → trattieni cauzione
+                    update@Database(
+                        "UPDATE authorizations SET status = 'COMMITTED' " +
+                        "WHERE auth_token = '" + session.authToken + "'"
+                    )(sr);
 
-            install( AccountSuspended => 
-                println@Console("FAIL: Utente sospeso: " + client)()
-            );    
-        
-            synchronized( balanceLock ) {
-                // Ricerca utente
-                userIndex = -1; // Default not found
-                for( i=0, i<#global.users, i++ ) {
-                    if ( global.users[i].name == client ) {
-                        userIndex = i
+                    negAmount = session.blockedAmount * (-1);
+                    update@Database(
+                        "INSERT INTO transactions (auth_token, user_id, transaction_type, amount, " +
+                        "balance_before, balance_after, description, created_at) " +
+                        "VALUES ('" + session.authToken + "', '" + session.userId + "', 'COMMIT_PENALTY', " +
+                        negAmount + ", " + currentBalance + ", " + currentBalance + ", " +
+                        "'Expired reservation - deposit retained', CURRENT_TIMESTAMP)"
+                    )(tr);
+
+                    println@Console("[BANK] Expired: deposit retained (E" + session.blockedAmount + ")")()
+
+                } else {
+                    // Rimborso totale
+                    newBalance = currentBalance + session.blockedAmount;
+
+                    update@Database(
+                        "UPDATE user_bank SET balance = " + newBalance + ", updated_at = CURRENT_TIMESTAMP " +
+                        "WHERE user_id = '" + session.userId + "'"
+                    )(ur);
+
+                    update@Database(
+                        "UPDATE authorizations SET status = 'CANCELLED' " +
+                        "WHERE auth_token = '" + session.authToken + "'"
+                    )(sr);
+
+                    update@Database(
+                        "INSERT INTO transactions (auth_token, user_id, transaction_type, amount, " +
+                        "balance_before, balance_after, description, created_at) " +
+                        "VALUES ('" + session.authToken + "', '" + session.userId + "', 'CANCEL_AUTH', " +
+                        session.blockedAmount + ", " + currentBalance + ", " + newBalance + ", " +
+                        "'Authorization cancelled - full refund', CURRENT_TIMESTAMP)"
+                    )(tr);
+
+                    println@Console("[BANK] Refunded E" + session.blockedAmount + ". Balance: E" + currentBalance + " -> E" + newBalance)()
+                }
+            };
+            sleep@Time(2000)()
+        }
+
+        [ commitPayment(request)(response) {
+            println@Console("\n[BANK] === COMMIT PAYMENT (" + session.userId + ") ===")();
+
+            finalAmount = double(request.finalAmount);
+            println@Console("[BANK] Final amount: E" + finalAmount)();
+
+            synchronized(balanceLock) {
+
+                query@Database(
+                    "SELECT balance FROM user_bank WHERE user_id = '" + session.userId + "'"
+                )(balRes);
+                currentBalance = double(balRes.row[0].balance);
+
+                if (finalAmount <= session.blockedAmount) {
+                    // Costo < cauzione → rimborso differenza
+                    refund     = session.blockedAmount - finalAmount;
+                    newBalance = currentBalance + refund;
+
+                    update@Database(
+                        "UPDATE user_bank SET balance = " + newBalance + ", updated_at = CURRENT_TIMESTAMP " +
+                        "WHERE user_id = '" + session.userId + "'"
+                    )(ur);
+
+                    update@Database(
+                        "UPDATE authorizations SET status = 'COMMITTED' " +
+                        "WHERE auth_token = '" + session.authToken + "'"
+                    )(sr);
+
+                    negAmount = finalAmount * (-1);
+                    update@Database(
+                        "INSERT INTO transactions (auth_token, user_id, transaction_type, amount, " +
+                        "balance_before, balance_after, description, created_at) " +
+                        "VALUES ('" + session.authToken + "', '" + session.userId + "', 'COMMIT_PAYMENT', " +
+                        negAmount + ", " + currentBalance + ", " + newBalance + ", " +
+                        "'Payment - refund " + refund + "', CURRENT_TIMESTAMP)"
+                    )(tr);
+
+                    response.success       = true;
+                    response.chargedAmount = finalAmount;
+                    response.receiptId     = "RCP_PAY_" + session.userId;
+
+                    println@Console("[BANK] Paid: E" + finalAmount + " | Refund: E" + refund)();
+                    println@Console("[BANK]   Balance: E" + currentBalance + " -> E" + newBalance)()
+
+                } else {
+                    // Costo > cauzione → addebito extra
+                    extra = finalAmount - session.blockedAmount;
+
+                    if (currentBalance >= extra) {
+                        newBalance = currentBalance - extra;
+
+                        update@Database(
+                            "UPDATE user_bank SET balance = " + newBalance + ", updated_at = CURRENT_TIMESTAMP " +
+                            "WHERE user_id = '" + session.userId + "'"
+                        )(ur);
+
+                        update@Database(
+                            "UPDATE authorizations SET status = 'COMMITTED' " +
+                            "WHERE auth_token = '" + session.authToken + "'"
+                        )(sr);
+
+                        negAmount = finalAmount * (-1);
+                        update@Database(
+                            "INSERT INTO transactions (auth_token, user_id, transaction_type, amount, " +
+                            "balance_before, balance_after, description, created_at) " +
+                            "VALUES ('" + session.authToken + "', '" + session.userId + "', 'COMMIT_PAYMENT', " +
+                            negAmount + ", " + currentBalance + ", " + newBalance + ", " +
+                            "'Payment - extra " + extra + "', CURRENT_TIMESTAMP)"
+                        )(tr);
+
+                        response.success       = true;
+                        response.chargedAmount = finalAmount;
+                        response.receiptId     = "RCP_PAY_" + session.userId;
+
+                        println@Console("[BANK] Paid: E" + finalAmount + " | Extra: E" + extra)();
+                        println@Console("[BANK]   Balance: E" + currentBalance + " -> E" + newBalance)()
+
+                    } else {
+                        response.success      = false;
+                        response.errorCode    = "INSUFFICIENT_FUNDS";
+                        response.errorMessage = "Fondi insufficienti per saldo finale";
+                        println@Console("[BANK] X Insolvency: need E" + extra + ", have E" + currentBalance)()
                     }
-                };
-                
-                // Se utente non trovato o sospeso
-                if ( userIndex == -1 || global.users[userIndex].state == "suspended" ) {
-                     with( error ) { 
-                        .message = "Account inesistente o bloccato." 
-                     };
-                     throw( AccountSuspended, error )
-                };
-                
-                currentBalance = global.users[userIndex].balance;
-                
-                if ( currentBalance < global.CAUZIONE_STD ) {
-                    with( error ) { .message = "Fondi insufficienti. Saldo: " + currentBalance};
-                    throw( InsufficientFunds, error )
-                } else {
-                    // Blocco cauzione
-                    global.users[userIndex].balance = currentBalance - global.CAUZIONE_STD
                 }
-            };
-
-            // Setup Sessione
-            sessionUserIndex = userIndex;
-            amountBlocked = global.CAUZIONE_STD; 
-            sessionUserName = client; 
-
-            response.paymentToken = new;
-            csets.paymentToken = response.paymentToken; 
-
-            response.success = true;
-            response.message = "Pre-auth OK"
-        };
-
-        // Fase 2: Conferma Pagamento
-        [ commitPayment( request )( response ) {
-            undef(response);
-            
-            install( PaymentRefused => 
-                println@Console( "FAIL: Pagamento rifiutato per " + sessionUserName + ": " + PaymentRefused.message )()
-            );
-
-            synchronized( balanceLock ) {
-                current = global.users[sessionUserIndex].balance;
-
-                if ( request.amount <= global.CAUZIONE_STD ) {
-                    // Rimborso parziale
-                    diff = amountBlocked - request.amount;
-                    global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance + diff;
-                    
-                    response.success = true;
-                    response.message = "Pagamento OK ("+request.amount+"). Rimborsati: " + diff
-                } else {
-                    // Addebito extra
-                    extra = request.amount - global.CAUZIONE_STD;
-                    
-                    if ( current < extra ) { 
-                        global.users[sessionUserIndex].state = "suspended";
-                        with( error ) { 
-                            .message = "Pagamento Rifiutato. Saldo insufficiente per extra: " + extra 
-                        };
-                        println@Console( "FAIL: " + error.message )();
-                        throw( PaymentRefused, error )
-                    };
-                    
-                    global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance - extra;
-                    
-                    response.success = true;
-                    response.message = "Pagamento OK ("+request.amount+"). Addebito extra: " + extra
-                }
-            };
-
-            response.txId = "TX-" + request.paymentToken;
-            println@Console( response.message )()
+            }
         } ]
 
-        // Fase 3: Annullamento (es. errore stazione)
-        [ cancelAuth( request ) ]{
-            println@Console( "--- Annullamento per " + sessionUserName )();
-            
-            synchronized( balanceLock ) {
-                global.users[sessionUserIndex].balance = global.users[sessionUserIndex].balance + amountBlocked;
-                println@Console( "Cauzione sbloccata (" + amountBlocked + "). Nuovo saldo: " + global.users[sessionUserIndex].balance )()
+        [ commitPenalty(request)(response) {
+            println@Console("\n[BANK] === COMMIT PENALTY (" + session.userId + ") ===")();
+
+            penaltyAmount = double(request.penaltyAmount);
+            println@Console("[BANK] Penalty: E" + penaltyAmount)();
+
+            synchronized(balanceLock) {
+
+                query@Database(
+                    "SELECT balance FROM user_bank WHERE user_id = '" + session.userId + "'"
+                )(balRes);
+                currentBalance = double(balRes.row[0].balance);
+
+                if (penaltyAmount < session.blockedAmount) {
+                    refund     = session.blockedAmount - penaltyAmount;
+                    newBalance = currentBalance + refund;
+
+                    update@Database(
+                        "UPDATE user_bank SET balance = " + newBalance + ", updated_at = CURRENT_TIMESTAMP " +
+                        "WHERE user_id = '" + session.userId + "'"
+                    )(ur);
+
+                    println@Console("[BANK] Partial penalty: E" + penaltyAmount + " | Refund: E" + refund)()
+                } else {
+                    newBalance = currentBalance;
+                    println@Console("[BANK] Full deposit retained: E" + session.blockedAmount)()
+                };
+
+                update@Database(
+                    "UPDATE authorizations SET status = 'COMMITTED' " +
+                    "WHERE auth_token = '" + session.authToken + "'"
+                )(sr);
+
+                negAmount = penaltyAmount * (-1);
+                update@Database(
+                    "INSERT INTO transactions (auth_token, user_id, transaction_type, amount, " +
+                    "balance_before, balance_after, description, created_at) " +
+                    "VALUES ('" + session.authToken + "', '" + session.userId + "', 'COMMIT_PENALTY', " +
+                    negAmount + ", " + currentBalance + ", " + newBalance + ", " +
+                    "'Cancellation penalty', CURRENT_TIMESTAMP)"
+                )(tr);
+
+                response.success       = true;
+                response.chargedAmount = penaltyAmount;
+                getCurrentTimeMillis@Time()(ts);
+                response.receiptId     = "RCP_PEN_" + session.userId + "_" + ts;
+
+                println@Console("[BANK] Balance: E" + currentBalance + " -> E" + newBalance)()
             }
-        } 
-    }
+        } ]
+    };
+
+    println@Console("[BANK] Session closed for " + session.userId + "\n")()
 }

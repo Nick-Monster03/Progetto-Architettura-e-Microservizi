@@ -1,184 +1,209 @@
 include "FleetInterface.iol"
 include "../tracking/TrackingInterface.iol"
 include "../battery/BatteryInterface.iol"
-include "../../service-utils/CostCalculatorInterface.iol"
+include "../../simulation/SimulatorInterface.iol"
+include "../../user-management/UserInterface.iol"
 from time import Time
 from console import Console
 
 service FleetGateway {
     execution: concurrent
 
-    // --- INTERFACCIA ESTERNA (REST/JSON per il Client) ---
-    // Manteniamo la configurazione DevMatte per compatibilità Frontend/Docker
-    inputPort FleetPublicPort {
-        Location: "socket://0.0.0.0:8082"    
+    inputPort GatewayPort {
+        Location: "socket://0.0.0.0:8082"
         Protocol: http { 
             .format = "json";
+            .cors= "true";
             .osc.startTracking.method = "post";
             .osc.registerUser.method = "post";
             .osc.stopTracking.method = "post";
+            .osc.loginUser.method = "post";
             .osc.bookVehicle.method = "post";
             .osc.getStatus.method = "get";
             .osc.getMap.method = "get";
-            
-            // Gestione CORS necessaria per il browser
-            .osc.handleOptions.method = "options";
-            .default = "handleOptions";
             .response.headers.("Access-Control-Allow-Origin") = "*";
-            .response.headers.("Access-Control-Allow-Methods") = "GET, POST, OPTIONS, PUT, DELETE";
-            .response.headers.("Access-Control-Allow-Headers") = "Content-Type"
+            .response.headers.("Access-Control-Allow-Methods") = "POST, GET, OPTIONS";
+            .response.headers.("Access-Control-Allow-Headers") = "Content-Type";
+            .default = "preflight";
+            .osc.preflightRegister.method = "options";
+            .osc.preflightRegister.alias = "registerUser";
+
+            .osc.preflightLogin.method = "options";
+            .osc.preflightLogin.alias = "loginUser";
         }
         Interfaces: FleetInterface
     }
 
-    // --- SERVIZI INTERNI (SOAP per Backend SOA) ---
-    
-    // Tracking Service
-    outputPort Tracking {
-        // Usa il nome del servizio Docker (da DevMatte) ma protocollo SOAP (da develope/traccia)
+    embed Console as Console
+
+    outputPort TrackingClient {
         Location: "socket://tracking-service:8084" 
         Protocol: soap { .dropRootValue = true }
         Interfaces: TrackingInterface
     }
 
-    // Battery Service
-    outputPort Battery {
-        Location: "socket://battery-service:8085" 
+    outputPort BatteryClient {
+        Location: "socket://battery-service:8085"
         Protocol: soap { .dropRootValue = true }
         Interfaces: BatteryInterface
     }
 
-    // Calculator Service (aggiunto da develope)
-    outputPort CalculatorPort {
-        // Corretto localhost -> calculator-service per Docker
-        Location: "socket://calculator-service:8089" 
+    outputPort SimulatorClient {
+        Location: "socket://simulator-service:8086" 
         Protocol: soap { .dropRootValue = true }
-        Interfaces: CostCalculatorInterface
+        Interfaces: SimulatorInterface
+    }
+    outputPort UserClient {
+        Location: "socket://user-service:8005" 
+        Protocol: soap 
+        Interfaces: UserInterface
+    }
+   
+    init {
+        println@Console("Fleet Gateway avviato su porta 8082 (REST)")()
     }
 
-    embed Console as Console
-
     main {
-        
-        // Avvia il monitoraggio
-        [ startTracking( request )( response ) {
-            // Validazione (DevMatte)
-            if ( is_defined( request.vehicleId ) ) {
-                println@Console("[GATEWAY] Start Tracking: " + request.vehicleId)();
-                
-                // Logica SOA
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RENTED" } )();
-                
-                // Salvataggio tempo inizio (develope)
-                // Se il client non manda il tempo, usiamo quello attuale (opzionale)
-                if ( !is_defined(request.time) ) {
-                    request.time = new
-                };
-                global.starting_times.(request.vehicleId) = request.time;
 
-                response.success = true;
-                response.message = "Monitoraggio avviato"
-            } else {
-                println@Console("[GATEWAY] Errore startTracking: vehicleId mancante!")();
-                response.success = false;
-                response.message = "Errore: Parametro 'vehicleId' obbligatorio."
-            }
+        [ preflightRegister( request )( response ) {
+            println@Console("[GW] CORS Preflight per Register approvato!")()
         } ]
 
-        // Termina il noleggio
-        [ stopTracking( request )( response ) {
-            // Validazione (DevMatte)
-            if ( is_defined( request.vehicleId ) ) {
-                println@Console("[GATEWAY] Stop Tracking: " + request.vehicleId)();
-                
-                // 1. Aggiornamento stato
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "AVAILABLE" } )();
-                
-                // 2. Recupero dati per calcolo
-                getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
-                getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
-
-                // 3. Calcolo Costo (Logica develope)
-                costMsg = "";
-                if ( is_defined( global.starting_times.(request.vehicleId) ) ) {
-                    start_time = global.starting_times.(request.vehicleId);
-                    // Se request.time manca, usa timestamp attuale fittizio o ricevuto
-                    if ( !is_defined(request.time) ) request.time = start_time + 600000; // fallback 10 min
-
-                    // Calcolo minuti (ms / 60000)
-                    minutes = (request.time - start_time) / 60000;
-                    if ( minutes < 1 ) minutes = 1; // Minimo 1 minuto
-
-                    calculateCost@CalculatorPort( { .minutes = minutes, .batteryLevel = batt } )( costResponse );
-                    costMsg = " Costo: " + costResponse.totalCost + " EUR"
-                };
-
-                response.success = true;
-                response.message = "Noleggio terminato. Bat: " + batt + "%." + costMsg
-            } else {
-                println@Console("[GATEWAY] Errore stopTracking: vehicleId mancante!")();
-                response.success = false;
-                response.message = "Errore: Parametro 'vehicleId' obbligatorio per terminare il noleggio."
-            }
-        } ]
-
-        // Ottieni stato veicolo
-        [ getStatus( request )( response ) {
-            if ( is_defined( request.vehicleId ) ) {
-                // Chiamate SOAP
-                getInfo@Tracking( { .vehicleId = request.vehicleId } )( info );
-                getBattery@Battery( { .vehicleId = request.vehicleId } )( batt );
-
-                response.vehicleId = request.vehicleId;
-                response.status = info.status;
-                response.latitude = info.location.latitude;
-                response.longitude = info.location.longitude;
-                response.batteryLevel = batt
-            } else {
-                println@Console("[GATEWAY] Errore getStatus: vehicleId mancante!")();
-                response.vehicleId = "UNKNOWN";
-                response.status = "ERROR_MISSING_ID";
-                response.batteryLevel = -1 
-            }
-        } ]
-
-        // Operazioni standard (Mantenute da DevMatte)
-        [ bookVehicle( request )( response ) {
-            if ( is_defined( request.vehicleId ) ) {
-                println@Console("[GATEWAY] Richiesta Prenotazione: " + request.vehicleId)();
-                setStatus@Tracking( { .vehicleId = request.vehicleId, .status = "RESERVED" } )();
-                response.success = true;
-                response.message = "Veicolo prenotato con successo per 30 minuti."
-            } else {
-                response.success = false;
-                response.message = "Errore: ID Veicolo mancante."
-            }
+        [ preflightLogin( request )( response ) {
+            println@Console("[GW] CORS Preflight per Login approvato!")()
         } ]
 
         [ registerUser( request )( response ) {
-            if ( is_defined( request.username ) && is_defined( request.password ) ) {
-                if ( is_defined( global.users.(request.username) ) ) {
-                    response.success = false;
-                    response.message = "Errore: L'utente " + request.username + " esiste già!"
-                } else {
-                    global.users.(request.username) = request.password;
-                    println@Console("[GATEWAY] Nuovo utente registrato: " + request.username)();
-                    response.success = true;
-                    response.message = "Registrazione avvenuta con successo!"
-                }
+            if ( !is_defined( request.username ) ) {
+                response.success = true;
+                response.message = "CORS OK"   
             } else {
-                response.success = false;
-                response.message = "Dati mancanti (username o password)."
+                println@Console("[GW] Inoltro richiesta di registrazione per: " + request.username)();
+                registerUser@UserClient( request )( response )
             }
         } ]
 
-        [ getMap( request )( response ) {
-            getVehicleList@Tracking()( trackingData );
-            response.vehicles -> trackingData.vehicles
+        [ loginUser( request )( response ) {
+            if ( !is_defined( request.username ) ) {
+                response.success = true;
+                response.message = "CORS OK"   
+            } else {
+                println@Console("[GW] Inoltro richiesta di login per: " + request.username)();
+                loginUser@UserClient( request )( response )
+            }
         } ]
 
-        [ handleOptions( request )( response ) {
-            nullProcess 
+        [ preflight( request )( response ) {
+            println@Console("[GW] Richiesta CORS Preflight intercettata e approvata!")()
+        } ]
+
+        [ startTracking( request )( response ) {
+            vid = request.vehicleId;
+            uid = request.userId;
+            println@Console("START del Tracking -> Veicolo: " + vid + ", User: " + uid)();
+
+            // Leggo lo status attuale dal DB tramite TrackingService
+            getInfo@TrackingClient( { .vehicleId = vid } )( currentInfo );
+
+            if ( currentInfo.status == "IN_USE" || currentInfo.status == "RESERVED" ) {
+                response.success = false;
+                response.message = "Veicolo non disponibile (stato: " + currentInfo.status + ")";
+                println@Console(" > ERRORE: Veicolo " + vid + " è in stato " + currentInfo.status)()
+            } else {
+                // Leggo batteria iniziale dal DB tramite BatteryService
+                getBattery@BatteryClient( { .vehicleId = vid } )( batInfo );
+                println@Console("Dati iniziali per " + vid + ": KM=" + currentInfo.totalKm + ", Bat=" + batInfo.level + "%")();
+
+                // Salvo solo il delta di sessione in memoria (startKm e startBattery)
+                synchronized( sessionLock ) {
+                    global.active_rentals.(vid).startKm      = currentInfo.totalKm;
+                    global.active_rentals.(vid).startBattery = batInfo.level;
+                    println@Console(" > Sessione salvata: startKm=" + currentInfo.totalKm + ", startBat=" + batInfo.level)()
+                };
+
+                // Aggiorno lo status nel DB tramite TrackingService
+                setStatus@TrackingClient( { .vehicleId = vid, .status = "IN_USE" } )( setResp );
+
+                // Avvio simulazione
+                sim_request.vehicleId = vid;
+                startSimulation@SimulatorClient( sim_request );
+                println@Console("Simulazione avviata")();
+
+                response.success = true;
+                response.message = "Tracking avviato"
+            }
+        } ]
+
+        [ stopTracking( request )( response ) {
+            vid = request.vehicleId;
+            uid = request.userId;
+            println@Console("STOP Tracking -> Veicolo: " + vid + ", User: " + uid)();
+
+            // Leggo lo status attuale dal DB
+            getInfo@TrackingClient( { .vehicleId = vid } )( currentInfo );
+
+            if ( currentInfo.status != "IN_USE" ) {
+                response.success = false;
+                response.message = "Veicolo non in uso (stato: " + currentInfo.status + ")";
+                response.kilometers = 0.0;
+                response.batteryConsumed = 0.0;
+                response.finalBattery = 0;
+                println@Console(" > ERRORE: Veicolo " + vid + " non è IN_USE")()
+            } else {
+                // Fermo la simulazione e ricevo i dati finali
+                sim_request.vehicleId = vid;
+                stopSimulation@SimulatorClient( sim_request )( simStopResp );
+                println@Console("Simulazione fermata - Dati finali ricevuti")();
+
+                deltaKm  = 0.0;
+                deltaBat = 0.0;
+
+                synchronized( sessionLock ) {
+                    if ( is_defined( global.active_rentals.(vid) ) ) {
+                        startK = global.active_rentals.(vid).startKm;
+                        startB = global.active_rentals.(vid).startBattery;
+
+                        deltaKm  = simStopResp.totalKm - startK;
+                        deltaBat = double(startB - simStopResp.level);
+
+                        undef( global.active_rentals.(vid) )
+                    } else {
+                        println@Console("WARN: Nessuna sessione attiva trovata per " + vid)()
+                    }
+                };
+
+                // Aggiorno lo status nel DB tramite TrackingService
+                setStatus@TrackingClient( { .vehicleId = vid, .status = "AVAILABLE" } )( setResp );
+
+                response.success        = true;
+                response.message        = "Noleggio terminato";
+                response.kilometers     = deltaKm;
+                response.batteryConsumed = deltaBat;
+                response.finalBattery   = simStopResp.level;
+
+                println@Console(" > Report: KM=" + deltaKm + ", BatCons=" + deltaBat)()
+            }
+        } ]
+
+        [ getStatus( request )( response ) {
+            vid = request.vehicleId;
+            
+            println@Console("[GW] Chiamo TrackingService...")();
+            getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
+            println@Console("[GW] Tracking ha risposto!")();
+
+            println@Console("[GW] Chiamo BatteryService...")();
+            getBattery@BatteryClient( { .vehicleId = vid } )( batLevel );
+            println@Console("[GW] Battery ha risposto: " + batLevel.level + "%")();
+
+            response.vehicleId    = vid;
+            response.batteryLevel = batLevel.level;
+            response.latitude     = trackInfo.location.latitude;
+            response.longitude    = trackInfo.location.longitude;
+            response.status       = trackInfo.status;
+
+            println@Console("GetStatus per veicolo " + vid + ": Bat=" + batLevel.level + ", Loc=(" + response.latitude + "," + response.longitude + "), Status=" + response.status)()
         } ]
     }
 }
+

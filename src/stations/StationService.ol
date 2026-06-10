@@ -1,148 +1,158 @@
-include "StationInterface.iol"
 include "console.iol"
+include "database.iol"
+include "StationInterface.iol"
 
-service StationService {
-
-    // Esecuzione concorrente per servire più client simultaneamente
-    execution: concurrent
-
-    // Definizione del Correlation Set per la sessione
-    // Collega il SID generato nella risposta di 'unlock' al SID richiesto in 'lock'
-    cset {
-        sid: UnlockResponse.sid LockRequest.sid
-    }
+service StationService {   
+    
+    execution: concurrent 
 
     inputPort StationPort {
-        // Usa 0.0.0.0 per Docker (fix DevMatte)
         Location: "socket://0.0.0.0:8083"
         Protocol: soap {
-            .wsdl = "./StationService.wsdl";
-            .wsdl.port = "StationPortServicePort";
-            .dropRootValue = true
+            .wsdl = "StationService.wsdl"
         }
         Interfaces: StationInterface
     }
 
     init {
-        println@Console("--- STATION SERVICE AVVIATO (Porta 8083) ---")();
-        
-        // Logica di inizializzazione da 'develope' (più ricca per i test)
-        
-        // Veicolo 1: Libero a Termini
-        global.station_vehicles.("v1").locked = true
-        global.station_vehicles.("v1").station = "Termini"
-        global.station_vehicles.("v1").reserved = false
-
-        // Veicolo 2: Libero a Tiburtina
-        global.station_vehicles.("v2").locked = true
-        global.station_vehicles.("v2").station = "Tiburtina"
-        global.station_vehicles.("v2").reserved = false
-
-        // Veicolo 3: Già prenotato (per testare fallimenti)
-        global.station_vehicles.("v3").locked = true
-        global.station_vehicles.("v3").station = "Eur-Fermi"
-        global.station_vehicles.("v3").reserved = true
-        global.station_vehicles.("v3").reservedBy = "user_b" 
+        with (connectionInfo) {
+            .username = "camunda";
+            .password = "camunda";
+            .host = "postgres";
+            .port = 5432;
+            .database = "camunda";
+            .driver = "postgresql"
+        };
+        connect@Database(connectionInfo)();
+        println@Console("Station Service avviato (Porta 8083)")();
+        println@Console("Connected to camunda DB")()
     }
 
     main {
 
-        // Operazione 'reserve' (presente solo in develope, fondamentale per la traccia)
-        [ reserve( request )( response ) {
-            id = request.vehicleId;
-            user = request.userId;
-            println@Console( "[RESERVE] Richiesta per veicolo " + id + " da utente " + user )();
-
-            synchronized( lock ) {
-                if ( !is_defined( global.station_vehicles.(id) ) ) {
-                    response.success = false;
-                    response.message = "Veicolo non esistente"
-                } 
-                else if ( global.station_vehicles.(id).locked && !global.station_vehicles.(id).reserved ) {
-                    global.station_vehicles.(id).reserved = true;
-                    global.station_vehicles.(id).reservedBy = user;
-                    
-                    response.success = true;
-                    response.message = "Veicolo prenotato con successo per 30 min."
-                } else {
-                    response.success = false;
-                    response.message = "Veicolo non disponibile (in uso o già prenotato)."
-                }
-            }
-        } ]
-
-        // Operazione 'unlock' con logica di business avanzata (develope)
         [ unlock( request )( response ) {
-            id = request.vehicleId;
-            user = request.userId;
-            println@Console( "[UNLOCK] Tentativo sblocco " + id + " utente " + user )();
-            
-            synchronized( lock ) {
-                // Fallback: crea il veicolo se non esiste (utile per test al volo)
-                if ( !is_defined( global.station_vehicles.(id) ) ) {
-                     global.station_vehicles.(id).locked = true;
-                     global.station_vehicles.(id).reserved = false;
-                     println@Console( "WARNING: Veicolo creato al volo per test." )()
-                };
+            vid = request.vehicleId;
+            uid = request.userId;
+            sid = request.stationId;
+            println@Console("Richiesta UNLOCK per veicolo: " + vid + ", user: " + uid + ", stazione: " + sid)();
 
-                canUnlock = false;
-                
-                // CASO A: Veicolo Prenotato
-                if ( global.station_vehicles.(id).reserved ) {
-                    if ( global.station_vehicles.(id).reservedBy == user ) {
-                        println@Console( "-> OK: Utente corrisponde alla prenotazione." )();
-                        canUnlock = true;
-                        // Consumiamo la prenotazione
-                        global.station_vehicles.(id).reserved = false;
-                        undef( global.station_vehicles.(id).reservedBy )
-                    } else {
-                        println@Console( "-> ERRORE: Veicolo riservato a un altro utente!" )();
-                        canUnlock = false;
-                        response.message = "Veicolo riservato ad un altro utente."
-                    }
-                } 
-                // CASO B: Noleggio Immediato (Nessuna prenotazione)
+            synchronized( lockManager ) {
+
+                query@Database(
+                    "SELECT status FROM vehicles WHERE vehicle_id = '" + vid + "'"
+                )(res);
+
+                if (#res.row == 0) {
+                    with( error ) { .message = "Veicolo " + vid + " non trovato" };
+                    throw( VehicleNotFoundFault, error )
+                }
+                else if (res.row[0].status == "BROKEN") {
+                    with( error ) {
+                        .message = "Errore hardware veicolo " + vid;
+                        .vehicleId = vid
+                    };
+                    throw( HardwareErrorFault, error )
+                }
+                else if (res.row[0].status == "UNLOCKED" || res.row[0].status == "IN_USE" || res.row[0].status == "RESERVED") {
+                    with( error ) {
+                        .message = "Veicolo non disponibile";
+                        .currentStatus = res.row[0].status   
+                    };
+                    throw( VehicleNotAvailableFault, error )
+                }
                 else {
-                    if ( global.station_vehicles.(id).locked ) {
-                        println@Console( "-> OK: Noleggio immediato." )();
-                        canUnlock = true
-                    } else {
-                        println@Console( "-> ERRORE: Veicolo già in uso." )();
-                        canUnlock = false;
-                        response.message = "Veicolo già in uso."
-                    }
-                };
-                
-                if ( canUnlock ) {
-                    global.station_vehicles.(id).locked = false;
-                    
-                    csets.sid = new;
-                    response.sid = csets.sid;
-                    
+                    update@Database(
+                        "UPDATE vehicles SET status = 'UNLOCKED', last_updated = CURRENT_TIMESTAMP " +
+                        "WHERE vehicle_id = '" + vid + "'"
+                    )(ur);
+
                     response.success = true;
-                    response.message = "Veicolo sbloccato. Buon viaggio!"
-                } else {
-                    response.success = false;
-                    response.sid = ""
-                    // message già settato nei rami else sopra
+                    response.message = "Veicolo sbloccato correttamente";
+                    println@Console(" > Veicolo " + vid + " SBLOCCATO")()
                 }
             }
         } ]
 
-        // Operazione 'lock'
         [ lock( request )( response ) {
-            id = request.vehicleId;
-            station = request.stationId;
-            println@Console( "[LOCK] Riconsegna veicolo " + id + " a " + station )();
+            vid = request.vehicleId;
+            uid = request.userId;
+            sid = request.stationId;
+            println@Console("Richiesta LOCK per veicolo: " + vid + ", user: " + uid + ", stazione: " + sid)();
 
-            synchronized( lock ) {
-                global.station_vehicles.(id).locked = true;
-                global.station_vehicles.(id).station = station;
-                global.station_vehicles.(id).reserved = false 
+            synchronized( lockManager ) {
+
+                query@Database(
+                    "SELECT status, battery_level FROM vehicles WHERE vehicle_id = '" + vid + "'"
+                )(res);
+
+                if (#res.row == 0) {
+                    with( error ) { .message = "Veicolo " + vid + " non trovato" };
+                    throw( VehicleNotFoundFault, error )
+                }
+                else {
+                    update@Database(
+                        "UPDATE vehicles SET status = 'AVAILABLE', last_updated = CURRENT_TIMESTAMP " +
+                        "WHERE vehicle_id = '" + vid + "'"
+                    )(ur);
+
+                    response.success = true;
+                    response.message = "Veicolo bloccato";
+                    response.finalBatteryLevel = double(res.row[0].battery_level);  // leggo dal DB, non calcolo
+                    println@Console(" > Veicolo " + vid + " BLOCCATO (AVAILABLE), batteria: " + response.finalBatteryLevel + "%")()
+                }
+            }
+        } ]
+
+        // OPERAZIONE GET ALL STATIONS (debug)
+        [ getAllStations()( response ) {
+            println@Console("Richiesta getAllStations")();
+
+            query@Database(
+                "SELECT s.station_id, s.name, s.latitude, s.longitude, " +
+                "v.vehicle_id, v.status, v.battery_level " +
+                "FROM stations s " +
+                "LEFT JOIN vehicles v ON s.station_id = v.station_id " +
+                "ORDER BY s.station_id, v.vehicle_id"
+            )(res);
+
+            stIdx = 0;
+            for (i = 0, i < #res.row, i++) {
+                row -> res.row[i];
+                sid = row.station_id;
+
+                // Cerco se la stazione è già nell'array risposta
+                found = false;
+                for (k = 0, k < stIdx, k++) {
+                    if (response.stations[k].stationId == sid) {
+                        found = true;
+                        // Aggiungo il veicolo alla stazione esistente
+                        vIdx = #response.stations[k].vehicles;
+                        if (is_defined(row.vehicle_id)) {
+                            response.stations[k].vehicles[vIdx].vehicleId = row.vehicle_id;
+                            response.stations[k].vehicles[vIdx].status    = row.status;
+                            response.stations[k].vehicles[vIdx].battery   = double(row.battery_level)
+                        }
+                    }
+                };
+
+                if (!found) {
+                    // Nuova stazione
+                    response.stations[stIdx].stationId = sid;
+                    response.stations[stIdx].name      = row.name;
+                    response.stations[stIdx].latitude  = double(row.latitude);
+                    response.stations[stIdx].longitude = double(row.longitude);
+
+                    if (is_defined(row.vehicle_id)) {
+                        response.stations[stIdx].vehicles[0].vehicleId = row.vehicle_id;
+                        response.stations[stIdx].vehicles[0].status    = row.status;
+                        response.stations[stIdx].vehicles[0].battery   = double(row.battery_level)
+                    };
+
+                    stIdx++
+                }
             };
 
-            response.success = true;
-            response.message = "Veicolo bloccato e parcheggiato."
+            println@Console(" > Restituite " + stIdx + " stazioni")()
         } ]
     }
 }

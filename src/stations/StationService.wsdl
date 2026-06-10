@@ -1,34 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<wsdl:definitions targetNamespace="http://acme.com/station.wsdl" xmlns:xsd1="http://acme.com/station.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://acme.com/station.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+<wsdl:definitions targetNamespace="station.acme.com.wsdl" xmlns:xsd1="station.acme.com.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="station.acme.com.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
   <wsdl:types>
-    <xs:schema targetNamespace="http://acme.com/station.xsd" xmlns:sch="http://acme.com/station.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="unlock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="unlockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="StationFaultType"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="reserve"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="reserveResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="sid" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+    <xs:schema targetNamespace="station.acme.com.xsd" xmlns:sch="station.acme.com.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="unlock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="unlockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="HardwareErrorFaultType"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="0" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="VehicleNotAvailableFaultType"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="0" name="currentStatus" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="VehicleNotFoundFaultType"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lock"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="lockResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="finalBatteryLevel" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="message" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="getAllStations"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="stations" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:complexType name="VehicleInfo"><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="battery" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="status" type="xs:string"/></xs:sequence></xs:complexType><xs:complexType name="StationInfo"><xs:sequence><xs:element maxOccurs="unbounded" minOccurs="0" name="vehicles" type="sch:VehicleInfo"/><xs:element maxOccurs="1" minOccurs="1" name="stationId" type="xs:string"/></xs:sequence></xs:complexType><xs:element name="getAllStationsResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="unbounded" minOccurs="0" name="stations" type="sch:StationInfo"/></xs:sequence></xs:complexType></xs:element></xs:schema>
   </wsdl:types>
-  <wsdl:message name="UnlockRequest">
-    <wsdl:part name="body" element="xsd1:unlock">
-    </wsdl:part>
-  </wsdl:message>
-  <wsdl:message name="LockRequest">
-    <wsdl:part name="body" element="xsd1:lock">
+  <wsdl:message name="LockResponse">
+    <wsdl:part name="body" element="xsd1:lockResponse">
     </wsdl:part>
   </wsdl:message>
   <wsdl:message name="UnlockResponse">
     <wsdl:part name="body" element="xsd1:unlockResponse">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="LockResponse">
-    <wsdl:part name="body" element="xsd1:lockResponse">
+  <wsdl:message name="GetAllStationsResponse">
+    <wsdl:part name="body" element="xsd1:getAllStationsResponse">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="ReserveRequest">
-    <wsdl:part name="body" element="xsd1:reserve">
+  <wsdl:message name="VehicleNotAvailableFaultType">
+    <wsdl:part name="body" element="xsd1:VehicleNotAvailableFaultType">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="StationFaultType">
-    <wsdl:part name="body" element="xsd1:StationFaultType">
+  <wsdl:message name="HardwareErrorFaultType">
+    <wsdl:part name="body" element="xsd1:HardwareErrorFaultType">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="ReserveResponse">
-    <wsdl:part name="body" element="xsd1:reserveResponse">
+  <wsdl:message name="GetAllStationsRequest">
+    <wsdl:part name="body" element="xsd1:getAllStations">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="UnlockRequest">
+    <wsdl:part name="body" element="xsd1:unlock">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="VehicleNotFoundFaultType">
+    <wsdl:part name="body" element="xsd1:VehicleNotFoundFaultType">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="LockRequest">
+    <wsdl:part name="body" element="xsd1:lock">
     </wsdl:part>
   </wsdl:message>
   <wsdl:portType name="StationPort">
@@ -37,19 +45,27 @@
     </wsdl:input>
       <wsdl:output message="tns:UnlockResponse">
     </wsdl:output>
-      <wsdl:fault name="StationHardwareFault" message="tns:StationFaultType">
+      <wsdl:fault name="HardwareErrorFault" message="tns:HardwareErrorFaultType">
     </wsdl:fault>
-    </wsdl:operation>
-    <wsdl:operation name="reserve">
-      <wsdl:input message="tns:ReserveRequest">
-    </wsdl:input>
-      <wsdl:output message="tns:ReserveResponse">
-    </wsdl:output>
+      <wsdl:fault name="VehicleNotAvailableFault" message="tns:VehicleNotAvailableFaultType">
+    </wsdl:fault>
+      <wsdl:fault name="VehicleNotFoundFault" message="tns:VehicleNotFoundFaultType">
+    </wsdl:fault>
     </wsdl:operation>
     <wsdl:operation name="lock">
       <wsdl:input message="tns:LockRequest">
     </wsdl:input>
       <wsdl:output message="tns:LockResponse">
+    </wsdl:output>
+      <wsdl:fault name="HardwareErrorFault" message="tns:HardwareErrorFaultType">
+    </wsdl:fault>
+      <wsdl:fault name="VehicleNotFoundFault" message="tns:VehicleNotFoundFaultType">
+    </wsdl:fault>
+    </wsdl:operation>
+    <wsdl:operation name="getAllStations">
+      <wsdl:input message="tns:GetAllStationsRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:GetAllStationsResponse">
     </wsdl:output>
     </wsdl:operation>
   </wsdl:portType>
@@ -63,21 +79,33 @@
       <wsdl:output>
         <soap:body use="literal"/>
       </wsdl:output>
-      <wsdl:fault name="StationHardwareFault">
-        <soap:fault name="StationHardwareFault" use="literal"/>
+      <wsdl:fault name="HardwareErrorFault">
+        <soap:fault name="HardwareErrorFault" use="literal"/>
+      </wsdl:fault>
+      <wsdl:fault name="VehicleNotAvailableFault">
+        <soap:fault name="VehicleNotAvailableFault" use="literal"/>
+      </wsdl:fault>
+      <wsdl:fault name="VehicleNotFoundFault">
+        <soap:fault name="VehicleNotFoundFault" use="literal"/>
       </wsdl:fault>
     </wsdl:operation>
-    <wsdl:operation name="reserve">
-      <soap:operation soapAction="reserve" style="document"/>
+    <wsdl:operation name="lock">
+      <soap:operation soapAction="lock" style="document"/>
       <wsdl:input>
         <soap:body use="literal"/>
       </wsdl:input>
       <wsdl:output>
         <soap:body use="literal"/>
       </wsdl:output>
+      <wsdl:fault name="HardwareErrorFault">
+        <soap:fault name="HardwareErrorFault" use="literal"/>
+      </wsdl:fault>
+      <wsdl:fault name="VehicleNotFoundFault">
+        <soap:fault name="VehicleNotFoundFault" use="literal"/>
+      </wsdl:fault>
     </wsdl:operation>
-    <wsdl:operation name="lock">
-      <soap:operation soapAction="lock" style="document"/>
+    <wsdl:operation name="getAllStations">
+      <soap:operation soapAction="getAllStations" style="document"/>
       <wsdl:input>
         <soap:body use="literal"/>
       </wsdl:input>
@@ -88,7 +116,7 @@
   </wsdl:binding>
   <wsdl:service name="StationPortService">
     <wsdl:port name="StationPortServicePort" binding="tns:StationPortSOAPBinding">
-      <soap:address location="socket://localhost:8083"/>
+      <soap:address location="http://localhost:8083"/>
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

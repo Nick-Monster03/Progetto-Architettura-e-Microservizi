@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+
+  user-service:
+    build: 
+      context: ../src/user-management
+    container_name: acme-user-service
+    ports:
+      - "8005:8005"
+    networks:
+      - acme-net
+
   # Servizio Bancario (Jolie)
   bank-service:
     build:
@@ -8,6 +18,9 @@ services:
     container_name: bank-service
     ports:
       - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -17,7 +30,10 @@ services:
       context: ../src/fleet-management/tracking
     container_name: tracking-service
     expose:
-      - "8084" # Esposto solo nella rete interna
+      - "8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -28,6 +44,9 @@ services:
     container_name: battery-service
     expose:
       - "8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -36,16 +55,16 @@ services:
     build:
       context: ../src/service-utils
     container_name: calculator-service
-    expose:
-      - "8089"
+    ports:
+      - "8089:8089"
     networks:
       - acme-net
 
   # Fleet Gateway (Jolie - REST API + SOAP Client)
   fleet-gateway:
     build:
-      context: ../src/fleet-management
-      dockerfile: gateway/Dockerfile
+      context: ../src
+      dockerfile: fleet-management/gateway/Dockerfile
     container_name: fleet-gateway
     ports:
       - "8082:8082"
@@ -57,43 +76,73 @@ services:
       - tracking-service
       - battery-service
       - calculator-service
+      - simulator-service
     networks:
       - acme-net
 
-  # Station Service (Jolie - SOAP)
   station-service:
     build:
       context: ../src/stations
     container_name: station-service
     ports:
       - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
   # Simulator Service 
-  simulator:
+  simulator-service:  
     build:
-      context: ../src/simulation
-    container_name: acme-simulator
-    environment:
-      - TRACKING_HOST=tracking-service
-      - BATTERY_HOST=battery-service
+      context: ../src
+      dockerfile: simulation/Dockerfile
+    container_name: simulator-service
+    ports:
+      - "8086:8086"
     depends_on:
       - tracking-service
       - battery-service
     networks:
       - acme-net
 
-  # Camunda BPMS
-  camunda:
-    image: camunda/camunda-bpm-platform:run-latest
-    container_name: acme-camunda
-    ports:
-      - "8080:8080"
+  # Database PostgreSQL
+  postgres:
+    image: postgres:15
     environment:
-      - CAMUNDA_bpm_run_cors_enabled=true
+      POSTGRES_DB: camunda
+      POSTGRES_USER: camunda
+      POSTGRES_PASSWORD: camunda
+    ports:
+      - "5433:5432"
     networks:
       - acme-net
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camunda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Camunda BPMS (commentato)
+  # camunda:
+  #   image: camunda/camunda-bpm-platform:run-latest
+  #   container_name: acme-camunda
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - CAMUNDA_bpm_run_cors_enabled=true
+  #     - DB_DRIVER=org.postgresql.Driver
+  #     - DB_URL=jdbc:postgresql://postgres:5432/camunda
+  #     - DB_USERNAME=camunda
+  #     - DB_PASSWORD=camunda
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - acme-net
 
   # Client Frontend 
   client-app:
@@ -108,3 +157,6 @@ services:
 networks:
   acme-net:
     driver: bridge
+
+volumes:
+  postgres-data:
