@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+
+  user-service:
+    build: 
+      context: ../src/user-management
+    container_name: acme-user-service
+    ports:
+      - "8005:8005"
+    networks:
+      - acme-net
+
   # Servizio Bancario (Jolie)
   bank-service:
     build:
