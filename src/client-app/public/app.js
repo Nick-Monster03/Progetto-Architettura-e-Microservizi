@@ -1,9 +1,13 @@
-const GATEWAY_URL = "http://localhost:8082"; 
+const GATEWAY_URL = "http://localhost:8082";
+const CAMUNDA_URL = "http://localhost:8080/engine-rest";
+
 const app = {
     map: null,
     user: null,
     markers: {},
     currentRentalId: null,
+    currentProcessId: null,   // ID istanza processo Camunda attiva
+    currentStationId: "s1",   // Stazione di default per i test
 
     init: function () {
         this.map = L.map('map', { zoomControl: false }).setView([41.8902, 12.4922], 14);
@@ -15,7 +19,6 @@ const app = {
             attribution: '© OpenStreetMap © CARTO'
         }).addTo(this.map);
 
-        // Controllo se c'è già un utente salvato in sessione
         const savedUser = localStorage.getItem('acme_user');
         if (savedUser) {
             this.user = savedUser;
@@ -25,6 +28,7 @@ const app = {
     },
 
     // --- AUTENTICAZIONE ---
+
     closeModal: function(modalId) {
         const modalEl = document.getElementById(modalId);
         if (modalEl) {
@@ -64,7 +68,7 @@ const app = {
                 Swal.fire({ icon: 'error', title: 'Accesso Negato', text: res.message });
             }
         })
-        .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare il Gateway.' }));
+        .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare il Gateway.' }));
     },
 
     register: function() {
@@ -75,9 +79,7 @@ const app = {
             return Swal.fire({ icon: 'warning', text: 'Inserisci username e password!' });
         }
         
-        // Chiudiamo correttamente la modale di REGISTRAZIONE
         this.closeModal('registerModal');
-
         Swal.fire({ title: 'Registrazione in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         fetch(`${GATEWAY_URL}/registerUser`, {
@@ -94,11 +96,12 @@ const app = {
                 Swal.fire({ icon: 'error', title: 'Errore', text: res.message });
             }
         })
-        .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare il Gateway.' }));
+        .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare il Gateway.' }));
     },
 
     logout: function() {
         this.user = null;
+        this.currentProcessId = null;
         localStorage.removeItem('acme_user');
         this.updateUI('guest');
     },
@@ -106,8 +109,8 @@ const app = {
     // --- GESTIONE INTERFACCIA (UI) ---
 
     updateUI: function(state) {
-        const guestSec = document.getElementById('guest-section');
-        const loggedSec = document.getElementById('logged-section');
+        const guestSec   = document.getElementById('guest-section');
+        const loggedSec  = document.getElementById('logged-section');
         const rentingSec = document.getElementById('renting-section');
 
         guestSec.classList.add('d-none');
@@ -129,21 +132,19 @@ const app = {
 
     refreshMap: function () {
         const vehicleIds = ["v1", "v2", "v3", "v-test"];
-
         vehicleIds.forEach(vid => {
             fetch(`${GATEWAY_URL}/getStatus?vehicleId=${vid}`)
                 .then(res => res.ok ? res.json() : Promise.reject("Errore HTTP"))
                 .then(data => this.updateMarker(data))
-                .catch(err => console.log(`Veicolo ${vid} non reperibile al momento.`));
+                .catch(() => console.log(`Veicolo ${vid} non reperibile al momento.`));
         });
     },
 
     updateMarker: function (vehicleData) {
         if (!vehicleData || !vehicleData.latitude || (vehicleData.latitude === 0 && vehicleData.longitude === 0)) return;
 
-        // Se in noleggio è rosso, se libero è verde
-        let isRented = vehicleData.status === "RENTED";
-        let color = isRented ? "#e74c3c" : "#2ecc71";
+        const isRented = vehicleData.status === "RENTED" || vehicleData.status === "IN_USE";
+        const color = isRented ? "#e74c3c" : "#2ecc71";
 
         if (this.markers[vehicleData.vehicleId]) {
             this.markers[vehicleData.vehicleId].setLatLng([vehicleData.latitude, vehicleData.longitude]);
@@ -185,50 +186,78 @@ const app = {
         });
     },
 
+    // Avvia il processo BPMN su Camunda per il noleggio immediato
     startRental: function (vehicleId) {
-        Swal.fire({ title: 'Sblocco veicolo...', didOpen: () => Swal.showLoading() });
+        if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima!', 'warning');
 
-        fetch(`${GATEWAY_URL}/startTracking`, {
+        Swal.fire({ title: 'Avvio noleggio...', text: 'Contatto la banca per la pre-autorizzazione...', didOpen: () => Swal.showLoading() });
+
+        fetch(`${CAMUNDA_URL}/process-definition/key/rental-process/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vehicleId: vehicleId, userId: this.user })
+            body: JSON.stringify({
+                variables: {
+                    userId:        { value: this.user,    type: "String"  },
+                    vehicleId:     { value: vehicleId,    type: "String"  },
+                    stationId:     { value: this.currentStationId, type: "String" },
+                    isRiservation: { value: false,        type: "Boolean" },
+                    card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
+                }
+            })
         })
-        .then(res => res.json())
         .then(res => {
-            if(res.success) {
-                this.currentRentalId = vehicleId;
-                this.updateUI('renting');
-                this.refreshMap();
-                Swal.fire({ icon: 'success', title: 'Sbloccato!', text: '🛴 Buon viaggio, rispetta il codice della strada!' });
-            } else {
-                Swal.fire({ icon: 'error', title: 'Impossibile sbloccare', text: res.message });
-            }
-        });
+            if (!res.ok) throw new Error("Camunda non raggiungibile (status " + res.status + ")");
+            return res.json();
+        })
+        .then(proc => {
+            // Salva l'ID istanza per poter inviare messaggi in seguito (es. stopRental)
+            this.currentProcessId = proc.id;
+            this.currentRentalId  = vehicleId;
+            this.updateUI('renting');
+            this.refreshMap();
+            Swal.fire({
+                icon: 'success',
+                title: 'Noleggio avviato!',
+                html: `🛴 Buon viaggio!<br><small class="text-muted">Process ID: ${proc.id}</small>`
+            });
+        })
+        .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
     },
 
+    // Termina il noleggio inviando il messaggio "vehicleReturned" al processo Camunda
     stopRental: function () {
         if (!this.currentRentalId) return;
 
-        Swal.fire({ title: 'Chiusura noleggio...', didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Chiusura noleggio...', text: 'Calcolo il costo finale...', didOpen: () => Swal.showLoading() });
 
-        fetch(`${GATEWAY_URL}/stopTracking`, {
+        // Invia il messaggio al processo Camunda per far avanzare il flusso alla riconsegna
+        fetch(`${CAMUNDA_URL}/message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vehicleId: this.currentRentalId, userId: this.user })
+            body: JSON.stringify({
+                messageName: "Message_endRental",
+                processInstanceId: this.currentProcessId,
+                processVariables: {
+                    stationId: { value: this.currentStationId, type: "String" }
+                }
+            })
         })
-        .then(res => res.json())
         .then(res => {
-            this.currentRentalId = null;
+            if (!res.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
+            this.currentRentalId  = null;
+            this.currentProcessId = null;
             this.updateUI('logged');
             this.refreshMap();
-            Swal.fire({ 
-                icon: 'info', 
-                title: 'Noleggio Terminato', 
-                html: `Hai parcheggiato correttamente.<br><b>${res.message}</b>` 
+            Swal.fire({
+                icon: 'info',
+                title: 'Noleggio Terminato',
+                text: 'Veicolo riconsegnato. Il pagamento finale verrà elaborato a breve.'
             });
-        });
+        })
+        .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
     },
 
+    // Avvia il processo BPMN su Camunda per la prenotazione breve
     prenota: function (vehicleId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima di prenotare!', 'warning');
         
@@ -241,18 +270,70 @@ const app = {
             confirmButtonText: 'Sì, prenota',
             cancelButtonText: 'Annulla'
         }).then((result) => {
-            if (result.isConfirmed) {
-                fetch(`${GATEWAY_URL}/bookVehicle`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ vehicleId: vehicleId, userId: this.user })
+            if (!result.isConfirmed) return;
+
+            Swal.fire({ title: 'Prenotazione in corso...', didOpen: () => Swal.showLoading() });
+
+            fetch(`${CAMUNDA_URL}/process-definition/key/rental-process/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    variables: {
+                        userId:        { value: this.user,    type: "String"  },
+                        vehicleId:     { value: vehicleId,    type: "String"  },
+                        stationId:     { value: this.currentStationId, type: "String" },
+                        isRiservation: { value: true,         type: "Boolean" },
+                        card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
+                    }
                 })
-                .then(res => res.json())
-                .then(res => {
-                    Swal.fire('Completato', res.message, 'success');
-                    this.refreshMap();
-                }).catch(err => Swal.fire('Errore', "Impossibile prenotare ora.", 'error'));
-            }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Camunda non raggiungibile");
+                return res.json();
+            })
+            .then(proc => {
+                this.currentProcessId = proc.id;
+                this.currentRentalId  = vehicleId;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Prenotazione Confermata!',
+                    html: `Veicolo <b>${vehicleId}</b> riservato per 30 minuti.<br><small class="text-muted">Process ID: ${proc.id}</small>`
+                });
+                this.refreshMap();
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
+        });
+    },
+
+    // Annulla la prenotazione inviando il messaggio "cancelRiservation" a Camunda
+    cancelBooking: function () {
+        if (!this.currentProcessId) return Swal.fire('Attenzione', 'Nessuna prenotazione attiva.', 'warning');
+
+        Swal.fire({
+            title: 'Annullare la prenotazione?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sì, annulla',
+            cancelButtonText: 'No'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+
+            fetch(`${CAMUNDA_URL}/message`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messageName: "Message_cancelReservation",
+                    processInstanceId: this.currentProcessId
+                })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
+                this.currentProcessId = null;
+                this.currentRentalId  = null;
+                this.refreshMap();
+                Swal.fire({ icon: 'success', title: 'Prenotazione annullata' });
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
         });
     }
 };
