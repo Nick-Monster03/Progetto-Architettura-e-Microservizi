@@ -21,7 +21,7 @@ const app = {
 
         const savedUser = localStorage.getItem('acme_user');
         if (savedUser) {
-            this.user = savedUser;
+            this.user = savedUser.toLowerCase();
             this.updateUI('logged');
             this.refreshMap();
         }
@@ -60,7 +60,7 @@ const app = {
         .then(res => {
             if (res.success) {
                 this.user = user;
-                localStorage.setItem('acme_user', user); 
+                localStorage.setItem('acme_user', user.toLowerCase());
                 this.updateUI('logged');
                 this.refreshMap();
                 Swal.fire({ icon: 'success', title: 'Accesso Effettuato', text: res.message, timer: 1500, showConfirmButton: false });
@@ -201,6 +201,7 @@ const app = {
                     vehicleId:     { value: vehicleId,    type: "String"  },
                     stationId:     { value: this.currentStationId, type: "String" },
                     isRiservation: { value: false,        type: "Boolean" },
+                    rentalType:    { value: "immediate",  type: "String"  },
                     card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
                 }
             })
@@ -283,6 +284,7 @@ const app = {
                         vehicleId:     { value: vehicleId,    type: "String"  },
                         stationId:     { value: this.currentStationId, type: "String" },
                         isRiservation: { value: true,         type: "Boolean" },
+                        rentalType:    { value: "reservation", type: "String"  },
                         card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
                     }
                 })
