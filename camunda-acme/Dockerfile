@@ -13,11 +13,6 @@ RUN mvn dependency:go-offline -q
 # Copia i sorgenti e i WSDL 
 COPY src ./src
 
-# Copia i WSDL esterni referenziati nel pom.xml con percorsi relativi ../src/...
-COPY ../src/bank-jolie/BankService.wsdl         /workspace/../src/bank-jolie/BankService.wsdl
-COPY ../src/stations/StationService.wsdl        /workspace/../src/stations/StationService.wsdl
-COPY ../src/service-utils/CostCalculatorService.wsdl /workspace/../src/service-utils/CostCalculatorService.wsdl
-
 # Build: skippa i test (girano in CI separata), genera le classi da WSDL e pacchettizza
 RUN mvn clean package -DskipTests -q
 
