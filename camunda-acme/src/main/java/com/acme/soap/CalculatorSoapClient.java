@@ -18,9 +18,9 @@ import jakarta.xml.ws.Holder;
 public class CalculatorSoapClient {
     
     private static final Logger log = LoggerFactory.getLogger(CalculatorSoapClient.class);
+
     @Value("${services.calculator.url}")
     private String calculatorServiceUrl;
-    
     private CalculatorPort calculatorPort;
     
     @PostConstruct
