@@ -18,7 +18,7 @@ import jakarta.xml.ws.Holder;
 public class CalculatorSoapClient {
     
     private static final Logger log = LoggerFactory.getLogger(CalculatorSoapClient.class);
-    private static final String CALCULATOR_SERVICE_URL = "http://127.0.0.1:8089";
+    private static final String CALCULATOR_SERVICE_URL = "http://calculator-service:8089";
     
     private CalculatorPort calculatorPort;
     
