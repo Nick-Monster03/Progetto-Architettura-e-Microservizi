@@ -5,7 +5,7 @@ import com.acme.generated.calculator.*;
 import java.util.HashMap;
 import java.util.Map;
 
-
+import org.springframework.beans.factory.annotation.Value;
 import org.apache.cxf.interceptor.transform.TransformInInterceptor;
 import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
 import org.slf4j.Logger;
@@ -18,15 +18,17 @@ import jakarta.xml.ws.Holder;
 public class CalculatorSoapClient {
     
     private static final Logger log = LoggerFactory.getLogger(CalculatorSoapClient.class);
-    private static final String CALCULATOR_SERVICE_URL = "http://calculator-service:8089";
-    
+
+    @Value("${services.calculator.url}")
+    private String calculatorServiceUrl;
     private CalculatorPort calculatorPort;
     
     @PostConstruct
     public void init() {
         JaxWsProxyFactoryBean factory = new JaxWsProxyFactoryBean();
         factory.setServiceClass(CalculatorPort.class);
-        factory.setAddress(CALCULATOR_SERVICE_URL);
+        factory.setAddress(calculatorServiceUrl);
+
 
         
 
@@ -40,7 +42,7 @@ public class CalculatorSoapClient {
         
         calculatorPort = (CalculatorPort) factory.create();
         
-        log.info("Calculator SOAP Client initialized at: {}", CALCULATOR_SERVICE_URL);
+        log.info("Calculator SOAP Client initialized at: {}", calculatorServiceUrl);
     }
     
     /**

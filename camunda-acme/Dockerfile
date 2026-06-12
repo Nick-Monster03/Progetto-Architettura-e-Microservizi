@@ -13,7 +13,6 @@ RUN mvn dependency:go-offline -q
 # Copia i sorgenti e i WSDL 
 COPY src ./src
 
-
 # Build: skippa i test (girano in CI separata), genera le classi da WSDL e pacchettizza
 RUN mvn clean package -DskipTests -q
 
