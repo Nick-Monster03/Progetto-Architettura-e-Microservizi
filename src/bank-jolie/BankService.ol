@@ -72,8 +72,7 @@ main {
                 if (currentBalance >= amount) {
 
                     getCurrentTimeMillis@Time()(timestamp);
-                    global.transactionCounter++;
-                    authToken = "TOK_" + userId + "_" + global.transactionCounter;
+                    authToken = "TOK_" + userId + "_" + timestamp;
 
                     csets.authToken       = authToken;
                     session.authToken     = authToken;

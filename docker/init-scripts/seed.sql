@@ -1,31 +1,28 @@
 -- seed.sql
--- Popolamento dati iniziali database acme_mobility
-
--- Connessione al database
-
-
--- ==================== USERS ====================
-INSERT INTO users (user_id, balance) VALUES
-('mario', 1000.00),
-('luigi', 5.00),
-('peach', 100.00),
-('wario', 1000.00),
-('waluigi', 1000.00),
-('toad', 100.00)
-ON CONFLICT (user_id) DO NOTHING;
+-- Aggiunge gli ID corretti usati dal codice (s1/s2/s3, v1/v2/v3/v-test)
+-- I dati station1/car1 ecc. sono già inseriti dallo schema.sql
 
 -- ==================== STATIONS ====================
-INSERT INTO stations (station_id, name, latitude, longitude, address) VALUES
-('station1', 'Bari Centro', 41.1171, 16.8719, 'Piazza Ferrarese, Bari'),
-('station2', 'Bari Porto', 41.1222, 16.8715, 'Lungomare Nazario Sauro, Bari'),
-('station3', 'Bari Università', 41.1200, 16.8700, 'Campus Universitario, Bari')
+INSERT INTO stations (station_id, name, latitude, longitude) VALUES
+('s1', 'Bari Centro',     41.1171, 16.8719),
+('s2', 'Bari Porto',      41.1222, 16.8715),
+('s3', 'Bari Università', 41.1200, 16.8700)
 ON CONFLICT (station_id) DO NOTHING;
 
 -- ==================== VEHICLES ====================
-INSERT INTO vehicles (vehicle_id, station_id, status, battery_level, latitude, longitude, total_km) VALUES
-('car1', 'station1', 'AVAILABLE', 76, 41.1171, 16.8719, 0.00),
-('car2', 'station2', 'AVAILABLE', 80, 41.1222, 16.8715, 0.00),
-('car3', 'station3', 'AVAILABLE', 100, 41.1200, 16.8700, 0.00)
+INSERT INTO vehicles (vehicle_id, station_id, status, battery_level) VALUES
+('v1',     's1', 'AVAILABLE', 76),
+('v2',     's2', 'AVAILABLE', 80),
+('v3',     's3', 'AVAILABLE', 100),
+('v-test', 's1', 'AVAILABLE', 90)
 ON CONFLICT (vehicle_id) DO NOTHING;
+
+-- ==================== TRACKING ====================
+INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) VALUES
+('v1',     41.1171, 16.8719),
+('v2',     41.1222, 16.8715),
+('v3',     41.1200, 16.8700),
+('v-test', 41.1171, 16.8719)
+ON CONFLICT DO NOTHING;
 
 SELECT 'Seed data loaded successfully' AS status;
