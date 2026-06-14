@@ -51,7 +51,7 @@ const app = {
         this.closeModal('loginModal');
         Swal.fire({ title: 'Accesso in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        fetch(`${GATEWAY_URL}/loginUser`, {
+        fetch('/api/loginUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pass })
@@ -68,8 +68,7 @@ const app = {
                 Swal.fire({ icon: 'error', title: 'Accesso Negato', text: res.message });
             }
         })
-        .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare il Gateway.' }));
-    },
+    .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare UserService.' }));    },
 
     register: function() {
         const user = document.getElementById('reg-username').value;
@@ -82,7 +81,7 @@ const app = {
         this.closeModal('registerModal');
         Swal.fire({ title: 'Registrazione in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        fetch(`${GATEWAY_URL}/registerUser`, {
+        fetch('/api/registerUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pass })

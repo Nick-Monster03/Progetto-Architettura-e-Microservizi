@@ -31,6 +31,9 @@ services:
     container_name: acme-user-service
     ports:
       - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - acme-net
 
@@ -167,6 +170,7 @@ services:
     depends_on:
       - fleet-gateway
       - camunda-acme
+      - user-service
     networks:
       - acme-net
 

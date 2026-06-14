@@ -11,5 +11,8 @@ type UserResponse: void {
 interface UserInterface {
     RequestResponse:
         registerUser(UserRequest)(UserResponse),
-        loginUser(UserRequest)(UserResponse)
+        loginUser(UserRequest)(UserResponse),
+        preflight(undefined)(undefined),
+        preflightRegister(undefined)(undefined),
+        preflightLogin(undefined)(undefined)
 }

@@ -4,10 +4,21 @@ include "database.iol"
 
 execution{ concurrent }
 
+
 inputPort UserPort {
-    Location: "socket://0.0.0.0:8005" 
-    Protocol: soap {
-        .wsdl = "UserService.wsdl"
+    Location: "socket://0.0.0.0:8005"
+    Protocol: http {
+        .format = "json";
+        .cors = "true";
+        .osc.registerUser.method = "post";
+        .osc.loginUser.method = "post";
+        .osc.preflightRegister.method = "options";
+        .osc.preflightRegister.alias = "registerUser";
+        .osc.preflightLogin.method = "options";
+        .osc.preflightLogin.alias = "loginUser";
+        .response.headers.("Access-Control-Allow-Origin") = "*";
+        .response.headers.("Access-Control-Allow-Methods") = "POST, OPTIONS";
+        .response.headers.("Access-Control-Allow-Headers") = "Content-Type"
     }
     Interfaces: UserInterface
 }
@@ -24,16 +35,27 @@ init {
     connect@Database(connectionInfo)();
 
     global.transactionCounter = 0;
-    println@Console(" User Service avviato sulla porta 8005 (SOAP)")();
+    println@Console(" User Service avviato sulla porta 8005 (REST/JSON)")();
     println@Console("Connected to camunda DB")()
-    // global.users.MarioRossi = "password123"
 }
 
 main {
+    [ preflightRegister( request )( response ) {
+        println@Console("[USER] CORS Preflight Register approvato")()
+    } ]
+
+    [ preflightLogin( request )( response ) {
+        println@Console("[USER] CORS Preflight Login approvato")()
+    } ]
+
+    [ preflight( request )( response ) {
+        println@Console("[USER] CORS Preflight generico approvato")()
+    } ]
+
     [ registerUser( request )( response ) {
-        
+
         synchronized(userLock) {
-            
+
             query@Database(
                 "SELECT * FROM users WHERE user_id = '" + request.username + "'"
             )(users);
@@ -49,7 +71,7 @@ main {
                     "INSERT INTO users (user_id, password) " +
                     "VALUES ('" + userId + "', '" + password + "')"
                 )(resUser);
-                
+
                 //Ad ogni nuovo utente viene regalato un bonus di benvenuto di 10 euro
                 update@Database(
                     "INSERT INTO user_bank (user_id, balance) " +
@@ -65,7 +87,7 @@ main {
     } ]
 
     [ loginUser( request )( response ) {
-       
+
         synchronized(userLock) {
             query@Database(
                 "SELECT * FROM users WHERE user_id = '" + request.username + "' AND password = '" + request.password + "'"

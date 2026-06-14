@@ -33,24 +33,11 @@ type GetStatusResponse {
     .status: string 
 }
 
-type UserRequestGw {
-    .username?: string
-    .password?: string
-}
-
-type UserResponseGw {
-    .success: bool
-    .message: string
-}
 
 interface FleetInterface {
     RequestResponse:
         startTracking(StartTrackingRequest)(StartTrackingResponse),
         stopTracking(StopTrackingRequest)(StopTrackingResponse),
         getStatus(GetStatusRequest)(GetStatusResponse),
-        registerUser(UserRequestGw)(UserResponseGw),
-        loginUser(UserRequestGw)(UserResponseGw),
         preflight(undefined)(undefined),
-        preflightRegister(undefined)(undefined),
-        preflightLogin(undefined)(undefined)
 }
