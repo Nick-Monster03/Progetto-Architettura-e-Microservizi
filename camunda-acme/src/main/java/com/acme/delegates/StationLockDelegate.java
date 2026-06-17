@@ -31,18 +31,27 @@ public class StationLockDelegate implements JavaDelegate {
             LockResponse response = stationSoapClient.lock(vehicleId, stationId, userId);
             
             boolean success = response.isSuccess();
-            
+            execution.setVariable("lockSuccess", success);
+
             if (success) {
                 Integer finalBattery = (int) response.getFinalBatteryLevel();
                 execution.setVariable("finalBattery", finalBattery);
-                
                 log.info("Vehicle locked - Battery: {}%", finalBattery);
             } else {
+                String errorMsg = response.getMessage();
+                execution.setVariable("lockErrorMessage", errorMsg);
                 log.warn("Lock failed");
             }
             
-        } catch (Exception e) {
-            log.error("Station Service unreachable", e);
+        } catch (jakarta.xml.ws.soap.SOAPFaultException e) {
+            log.warn("Lock rifiutato dalla stazione: {}", e.getMessage());
+            execution.setVariable("lockSuccess", false);
+            execution.setVariable("lockErrorMessage", e.getMessage());
+        }
+        catch (Exception e) {
+            log.error("Station Service unreachable", e.getMessage());
+            execution.setVariable("lockSuccess", false);
+            execution.setVariable("lockErrorMessage", "Station offline");
         }
     }
 }

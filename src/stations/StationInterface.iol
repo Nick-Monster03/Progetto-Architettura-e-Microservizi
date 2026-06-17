@@ -39,6 +39,16 @@ type HardwareErrorFaultType {
     vehicleId?: string
 }
 
+type InvalidRequestFaultType {
+    message: string
+    field?: string
+}
+
+type StationNotExistsFaultType {
+    message: string
+    stationId?: string
+}
+
 type VehicleInfo {
     vehicleId: string
     status: string
@@ -61,14 +71,40 @@ type GetAllStationsResponse {
     stations*: StationInfo
 }
 
+type GetVehiclesRequest {
+    stationId?: string
+    availableOnly: bool
+}
+
+type GetAllVehiclesResponse {
+    vehicles*: string
+}
+
+type GetStationByVehicleIdRequest {
+    vehicleId: string
+}
+
+type GetStationByVehicleIdResponse {
+    stationId: string
+}
+    
 interface StationInterface {
     RequestResponse:
         unlock(UnlockRequest)(UnlockResponse)
             throws HardwareErrorFault(HardwareErrorFaultType)
+                   StationNotExistsFault(StationNotExistsFaultType)
+                   InvalidRequestFault(InvalidRequestFaultType)
                    VehicleNotFoundFault(VehicleNotFoundFaultType)
                    VehicleNotAvailableFault(VehicleNotAvailableFaultType),
         lock(LockRequest)(LockResponse)
             throws HardwareErrorFault(HardwareErrorFaultType)
+                   InvalidRequestFault(InvalidRequestFaultType)
+                   StationNotExistsFault(StationNotExistsFaultType)
                    VehicleNotFoundFault(VehicleNotFoundFaultType),
-        getAllStations(GetAllStationsRequest)(GetAllStationsResponse)
+        getAllStations(GetAllStationsRequest)(GetAllStationsResponse),
+        getVehicles(GetVehiclesRequest)(GetAllVehiclesResponse)
+            throws StationNotExistsFault(StationNotExistsFaultType),
+        getStationByVehicleId(GetStationByVehicleIdRequest)(GetStationByVehicleIdResponse)
+            throws VehicleNotFoundFault(VehicleNotFoundFaultType)
+        
 }

@@ -43,7 +43,7 @@ public class StationUnlockDelegate implements JavaDelegate {
             
         }
         catch (jakarta.xml.ws.soap.SOAPFaultException e) {
-            // Fault SOAP dalla stazione (veicolo non disponibile, broken, ecc.)
+            // Fault SOAP dalla stazione (veicolo non disponibile, broken, stazione o veicolo non validi ecc.)
             log.warn("Unlock rifiutato dalla stazione: {}", e.getMessage());
             execution.setVariable("unlockSuccess", false);
             execution.setVariable("unlockErrorMessage", e.getMessage());

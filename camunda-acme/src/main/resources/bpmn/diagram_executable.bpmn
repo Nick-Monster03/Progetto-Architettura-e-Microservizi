@@ -161,7 +161,7 @@ execution.setVariable("latePenalty", latePenalty);</bpmn:script>
       <bpmn:outgoing>Flow_1168l8z</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:serviceTask id="Activity_1sjwks2" name="Calculate Cost" camunda:delegateExpression="${calculatorDelegate}">
-      <bpmn:incoming>Flow_0pnm2iv</bpmn:incoming>
+      <bpmn:incoming>Flow_1dl7hga</bpmn:incoming>
       <bpmn:outgoing>Flow_0yot6o3</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:endEvent id="Event_1k7k1t1">
@@ -189,10 +189,10 @@ execution.setVariable("latePenalty", latePenalty);</bpmn:script>
     </bpmn:serviceTask>
     <bpmn:sequenceFlow id="Flow_1rvw6nl" sourceRef="Event_1pjpwvl" targetRef="Activity_0wg0ojx" />
     <bpmn:sequenceFlow id="Flow_1v8i9qk" sourceRef="Activity_0wg0ojx" targetRef="Activity_1y4bk6p" />
-    <bpmn:sequenceFlow id="Flow_0pnm2iv" sourceRef="Activity_1y4bk6p" targetRef="Activity_1sjwks2" />
     <bpmn:serviceTask id="Activity_1y4bk6p" name="lock" camunda:delegateExpression="${stationLockDelegate}">
       <bpmn:incoming>Flow_1v8i9qk</bpmn:incoming>
-      <bpmn:outgoing>Flow_0pnm2iv</bpmn:outgoing>
+      <bpmn:incoming>Flow_0d0c4rj</bpmn:incoming>
+      <bpmn:outgoing>Flow_00vq8kd</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:exclusiveGateway id="Gateway_1k3i8lr" name="UnlockIsOk">
       <bpmn:incoming>Flow_1frc8er</bpmn:incoming>
@@ -214,6 +214,19 @@ execution.setVariable("latePenalty", latePenalty);</bpmn:script>
     <bpmn:sequenceFlow id="Flow_0s1y46h" sourceRef="Gateway_1k3i8lr" targetRef="Activity_08m6jr7">
       <bpmn:extensionElements />
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${unlockSuccess == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:exclusiveGateway id="Gateway_0vyemvy" name="Check_Lock">
+      <bpmn:incoming>Flow_00vq8kd</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dl7hga</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0d0c4rj</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_1dl7hga" name="Lock_ok" sourceRef="Gateway_0vyemvy" targetRef="Activity_1sjwks2">
+      <bpmn:extensionElements />
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${lockSuccess == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_00vq8kd" sourceRef="Activity_1y4bk6p" targetRef="Gateway_0vyemvy" />
+    <bpmn:sequenceFlow id="Flow_0d0c4rj" name="Lock_ko" sourceRef="Gateway_0vyemvy" targetRef="Activity_1y4bk6p">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${lockSuccess == false}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
   </bpmn:process>
   <bpmn:message id="Message_startRental" name="startRental" />
@@ -368,6 +381,12 @@ execution.setVariable("latePenalty", latePenalty);</bpmn:script>
       <bpmndi:BPMNShape id="BPMNShape_0c6s9n1" bpmnElement="Event_1iilctl">
         <dc:Bounds x="3822" y="1192" width="36" height="36" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0vyemvy_di" bpmnElement="Gateway_0vyemvy" isMarkerVisible="true">
+        <dc:Bounds x="5185" y="1005" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5180" y="981" width="62" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_0q5v9o7_di" bpmnElement="Flow_0q5v9o7">
         <di:waypoint x="1000" y="540" />
         <di:waypoint x="1215" y="540" />
@@ -505,10 +524,6 @@ execution.setVariable("latePenalty", latePenalty);</bpmn:script>
         <di:waypoint x="4610" y="1030" />
         <di:waypoint x="4970" y="1030" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_0pnm2iv_di" bpmnElement="Flow_0pnm2iv">
-        <di:waypoint x="5070" y="1030" />
-        <di:waypoint x="5380" y="1030" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1frc8er_di" bpmnElement="Flow_1frc8er">
         <di:waypoint x="3130" y="1080" />
         <di:waypoint x="3305" y="1080" />
@@ -527,6 +542,26 @@ execution.setVariable("latePenalty", latePenalty);</bpmn:script>
         <di:waypoint x="3330" y="1105" />
         <di:waypoint x="3330" y="1210" />
         <di:waypoint x="3470" y="1210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dl7hga_di" bpmnElement="Flow_1dl7hga">
+        <di:waypoint x="5235" y="1030" />
+        <di:waypoint x="5380" y="1030" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5288" y="1012" width="42" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00vq8kd_di" bpmnElement="Flow_00vq8kd">
+        <di:waypoint x="5070" y="1030" />
+        <di:waypoint x="5185" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0d0c4rj_di" bpmnElement="Flow_0d0c4rj">
+        <di:waypoint x="5210" y="1055" />
+        <di:waypoint x="5210" y="1160" />
+        <di:waypoint x="5020" y="1160" />
+        <di:waypoint x="5020" y="1070" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5095" y="1142" width="41" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="TextAnnotation_12szkf5_di" bpmnElement="TextAnnotation_12szkf5">
         <dc:Bounds x="5480" y="850" width="100" height="99" />
