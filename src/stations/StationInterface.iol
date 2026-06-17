@@ -47,10 +47,13 @@ type VehicleInfo {
 
 type StationInfo {
     stationId: string
+    name: string
+    latitude: double
+    longitude: double
     vehicles*: VehicleInfo
 }
 
-type GetAllStationsRequest { 
+type GetAllStationsRequest {
     stations: string
 }
 
@@ -60,12 +63,12 @@ type GetAllStationsResponse {
 
 interface StationInterface {
     RequestResponse:
-        unlock(UnlockRequest)(UnlockResponse) 
-            throws HardwareErrorFault(HardwareErrorFaultType) 
-                   VehicleNotFoundFault(VehicleNotFoundFaultType) 
+        unlock(UnlockRequest)(UnlockResponse)
+            throws HardwareErrorFault(HardwareErrorFaultType)
+                   VehicleNotFoundFault(VehicleNotFoundFaultType)
                    VehicleNotAvailableFault(VehicleNotAvailableFaultType),
-        lock(LockRequest)(LockResponse) 
-            throws HardwareErrorFault(HardwareErrorFaultType) 
+        lock(LockRequest)(LockResponse)
+            throws HardwareErrorFault(HardwareErrorFaultType)
                    VehicleNotFoundFault(VehicleNotFoundFaultType),
         getAllStations(GetAllStationsRequest)(GetAllStationsResponse)
 }
