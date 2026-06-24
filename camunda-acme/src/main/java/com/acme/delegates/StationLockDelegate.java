@@ -2,6 +2,11 @@ package com.acme.delegates;
 
 import com.acme.generated.station.LockResponse;
 import com.acme.soap.StationSoapClient;
+import com.acme.generated.station.HardwareErrorFaultType_Exception;
+import com.acme.generated.station.InvalidRequestFaultType_Exception;
+import com.acme.generated.station.StationNotExistsFaultType_Exception;
+import com.acme.generated.station.VehicleNotFoundFaultType_Exception;
+
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -43,13 +48,13 @@ public class StationLockDelegate implements JavaDelegate {
                 log.warn("Lock failed");
             }
             
-        } catch (jakarta.xml.ws.soap.SOAPFaultException e) {
+        }  catch (VehicleNotFoundFaultType_Exception | HardwareErrorFaultType_Exception |
+            StationNotExistsFaultType_Exception | InvalidRequestFaultType_Exception e) {
             log.warn("Lock rifiutato dalla stazione: {}", e.getMessage());
             execution.setVariable("lockSuccess", false);
             execution.setVariable("lockErrorMessage", e.getMessage());
-        }
-        catch (Exception e) {
-            log.error("Station Service unreachable", e.getMessage());
+        }catch (Exception e) {
+            log.error("Station Service unreachable", e);
             execution.setVariable("lockSuccess", false);
             execution.setVariable("lockErrorMessage", "Station offline");
         }

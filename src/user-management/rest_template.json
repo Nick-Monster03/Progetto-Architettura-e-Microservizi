@@ -1,0 +1,8 @@
+{
+    "registerUser": {
+        "method": "post"
+    },
+    "loginUser": {
+        "method": "post"
+    }
+}

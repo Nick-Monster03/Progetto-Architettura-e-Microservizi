@@ -64,7 +64,7 @@ type StationInfo {
 }
 
 type GetAllStationsRequest {
-    stations: string
+   //stations: string
 }
 
 type GetAllStationsResponse {
@@ -87,6 +87,27 @@ type GetStationByVehicleIdRequest {
 type GetStationByVehicleIdResponse {
     stationId: string
 }
+
+type ReserveRequest {
+    vehicleId: string
+    stationId: string
+    userId: string
+}
+
+type ReserveResponse {
+    success: bool
+    message: string
+}
+
+type CancelReservationRequest {
+    vehicleId: string
+    stationId: string
+}
+
+type CancelReservationResponse {
+    success: bool
+    message: string
+}
     
 interface StationInterface {
     RequestResponse:
@@ -105,6 +126,14 @@ interface StationInterface {
         getVehicles(GetVehiclesRequest)(GetAllVehiclesResponse)
             throws StationNotExistsFault(StationNotExistsFaultType),
         getStationByVehicleId(GetStationByVehicleIdRequest)(GetStationByVehicleIdResponse)
+            throws VehicleNotFoundFault(VehicleNotFoundFaultType),
+        reserve(ReserveRequest)(ReserveResponse) 
             throws VehicleNotFoundFault(VehicleNotFoundFaultType)
+                   StationNotExistsFault(StationNotExistsFaultType)
+                   VehicleNotAvailableFault(VehicleNotAvailableFaultType),
+        cancelReservation(CancelReservationRequest)(CancelReservationResponse) 
+            throws VehicleNotFoundFault(VehicleNotFoundFaultType)
+                   VehicleNotAvailableFault(VehicleNotAvailableFaultType)
+                   StationNotExistsFault(StationNotExistsFaultType)
         
 }

@@ -47,7 +47,7 @@ public class BankSoapClient {
     //             String cardNumber, Holder<Boolean> success,
     //             Holder<String> authToken, Holder<String> errorMessage,
     //             Holder<String> errorCode, Holder<Double> blockedAmount)
-    public PreAuthorizeResponse preAuthorize(String userId, double amount,
+    public PreAuthorizeResponse preAuthorize(String userId, String vehicleId, double amount,
                                               String cardNumber, boolean isReservation) {
         Holder<Boolean> success       = new Holder<>();
         Holder<String>  authToken     = new Holder<>();
@@ -55,7 +55,7 @@ public class BankSoapClient {
         Holder<String>  errorCode     = new Holder<>();
         Holder<Double>  blockedAmount = new Holder<>();
 
-        bankPort.preAuthorize(isReservation, amount, userId, cardNumber,
+        bankPort.preAuthorize(isReservation, amount, vehicleId, userId, cardNumber,
                               success, authToken, errorMessage, errorCode, blockedAmount);
 
         PreAuthorizeResponse resp = new PreAuthorizeResponse();

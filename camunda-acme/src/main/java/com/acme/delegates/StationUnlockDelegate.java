@@ -1,6 +1,11 @@
 package com.acme.delegates;
 
+import com.acme.generated.station.HardwareErrorFaultType_Exception;
+import com.acme.generated.station.InvalidRequestFaultType_Exception;
+import com.acme.generated.station.StationNotExistsFaultType_Exception;
 import com.acme.generated.station.UnlockResponse;
+import com.acme.generated.station.VehicleNotAvailableFaultType_Exception;
+import com.acme.generated.station.VehicleNotFoundFaultType_Exception;
 import com.acme.soap.StationSoapClient;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
@@ -40,14 +45,14 @@ public class StationUnlockDelegate implements JavaDelegate {
                 execution.setVariable("unlockErrorMessage", errorMsg);
                 log.warn("Unlock FAILED: {}", errorMsg);
             }
-            
-        }
-        catch (jakarta.xml.ws.soap.SOAPFaultException e) {
-            // Fault SOAP dalla stazione (veicolo non disponibile, broken, stazione o veicolo non validi ecc.)
+        // StationUnlockDelegate.java
+        } catch (VehicleNotAvailableFaultType_Exception | HardwareErrorFaultType_Exception |
+                VehicleNotFoundFaultType_Exception | StationNotExistsFaultType_Exception |
+                InvalidRequestFaultType_Exception e) {
             log.warn("Unlock rifiutato dalla stazione: {}", e.getMessage());
             execution.setVariable("unlockSuccess", false);
             execution.setVariable("unlockErrorMessage", e.getMessage());
-        } 
+        }
         catch (Exception e) {
             log.error("Station Service unreachable", e);
             execution.setVariable("unlockSuccess", false);

@@ -99,16 +99,44 @@ service StationService {
                     };
                     throw( VehicleNotAvailableFault, error )
                 }
-                else if (res.row[0].status == "UNLOCKED" || res.row[0].status == "IN_USE" || res.row[0].status == "RESERVED") {
+                else if (res.row[0].status == "UNLOCKED" || res.row[0].status == "IN_USE" ) {
                     with( error ) {
                         .message = "Veicolo non disponibile";
                         .currentStatus = res.row[0].status   
                     };
                     throw( VehicleNotAvailableFault, error )
                 }
+                else if (res.row[0].status == "RESERVED")
+                {
+                    //prendo tutte le authorization fatte non scadute, quindi ancora valide
+                    query@Database(
+                    "SELECT * FROM authorizations WHERE vehicle_id = '" + vid + "' 
+                    AND user_id = '" + uid + "' AND expires_at > CURRENT_TIMESTAMP ORDER BY created_at desc"
+                    )(authRes);
+
+                    if(#authRes.row == 0 ) //non esiste un autorizzazione valida quindi non può prendere quel veicolo
+                    {
+                        with( error ) {
+                        .message = "Veicolo prenotato da un altro utente";
+                        .currentStatus = res.row[0].status   
+                    };
+                    throw( VehicleNotAvailableFault, error )
+                    }
+                    else {
+                        update@Database(
+                            "UPDATE vehicles SET status = 'IN_USE', last_updated = CURRENT_TIMESTAMP " +
+                            "WHERE vehicle_id = '" + vid + "'"
+                        )(ur);
+
+                        response.success = true;
+                        response.message = "Veicolo sbloccato correttamente (prenotazione confermata)";
+                        println@Console(" > Veicolo " + vid + " SBLOCCATO (da RESERVED, prenotazione di " + uid + ")")()
+                    }
+
+                }
                 else {
                     update@Database(
-                        "UPDATE vehicles SET status = 'UNLOCKED', last_updated = CURRENT_TIMESTAMP " +
+                        "UPDATE vehicles SET status = 'IN_USE', last_updated = CURRENT_TIMESTAMP " +
                         "WHERE vehicle_id = '" + vid + "'"
                     )(ur);
 
@@ -178,8 +206,8 @@ service StationService {
                         newStatus = "CHARGING"
                     }
                     update@Database(
-                        "UPDATE vehicles SET status = '" + newStatus + "', last_updated = CURRENT_TIMESTAMP " +
-                        "WHERE vehicle_id = '" + vid + "'"
+                        "UPDATE vehicles SET status = '" + newStatus + "', last_updated = CURRENT_TIMESTAMP, " +
+                        "station_id = '" + sid + "'  " + "WHERE vehicle_id = '" + vid + "'"
                     )(ur);
 
                     response.success = true;
@@ -190,7 +218,114 @@ service StationService {
             }
         } ]
 
-        [ getAllStations()( response ) {
+        [ reserve( request )( response ) {
+            vid = request.vehicleId;
+            sid = request.stationId;
+            uid = request.userId;
+
+            query@Database("SELECT station_id FROM stations WHERE station_id = '" + sid + "'")(stations);
+            if(#stations.row == 0){
+                with( error ) {
+                    .message = "Station ID non valido";
+                    .stationId = sid
+                };
+                throw( StationNotExistsFault, error )
+            }
+            query@Database("SELECT vehicle_id FROM vehicles WHERE vehicle_id = '" + vid + "'")(veicoli);
+            if(#veicoli.row == 0){
+                with( error ) {
+                    .message = "Vehicle ID " + vid + " non valido"
+                };
+                throw( VehicleNotFoundFault, error )
+            }
+
+            println@Console("Richiesta RESERVE per veicolo: " + vid + ", user: " + uid + ", stazione: " + sid)();
+
+            synchronized( lockManager ) {
+
+                query@Database(
+                    "SELECT status FROM vehicles WHERE vehicle_id = '" + vid + "'"
+                )(res);
+
+                if (#res.row == 0) {
+                    with( error ) { .message = "Veicolo " + vid + " non trovato" };
+                    throw( VehicleNotFoundFault, error )
+                }
+                else if (res.row[0].status != "AVAILABLE") {
+                    with( error ) {
+                        .message = "Veicolo non disponibile per la prenotazione";
+                        .currentStatus = res.row[0].status
+                    };
+                    throw( VehicleNotAvailableFault, error )
+                }
+                else {
+                    update@Database(
+                        "UPDATE vehicles SET status = 'RESERVED', last_updated = CURRENT_TIMESTAMP " +
+                        "WHERE vehicle_id = '" + vid + "'"
+                    )(ur);
+
+                    response.success = true;
+                    response.message = "Veicolo prenotato correttamente";
+                    println@Console(" > Veicolo " + vid + " RISERVATO per " + uid)()
+                }
+            }
+        } ]
+
+        [ cancelReservation( request )( response ) {
+            vid = request.vehicleId;
+            sid = request.stationId;
+
+            query@Database("SELECT vehicle_id FROM vehicles WHERE vehicle_id = '" + vid + "'")(veicoli);
+            if(#veicoli.row == 0){
+                with( error ) {
+                    .message = "Vehicle ID " + vid + " non valido"
+                };
+                throw( VehicleNotFoundFault, error )
+            }
+
+            query@Database("SELECT station_id FROM stations WHERE station_id = '" + sid + "'")(stations);
+            if(#stations.row == 0){
+                with( error ) {
+                    .message = "Station ID non valido";
+                    .stationId = sid
+                };
+                throw( StationNotExistsFault, error )
+            }
+
+            println@Console("Richiesta CANCEL RESERVATION per veicolo: " + vid + ", stazione: " + sid)();
+
+            synchronized( lockManager ) {
+
+                query@Database(
+                    "SELECT status FROM vehicles WHERE vehicle_id = '" + vid + "'"
+                )(res);
+
+                if (#res.row == 0) {
+                    with( error ) { .message = "Veicolo " + vid + " non trovato" };
+                    throw( VehicleNotFoundFault, error )
+                }
+                else if (res.row[0].status != "RESERVED") {
+                    with( error ) {
+                        .message = "Il veicolo non è attualmente prenotato";
+                        .currentStatus = res.row[0].status
+                    };
+                    throw( VehicleNotAvailableFault, error )
+                }
+                else {
+                    update@Database(
+                        "UPDATE vehicles SET status = 'AVAILABLE', last_updated = CURRENT_TIMESTAMP " +
+                        "WHERE vehicle_id = '" + vid + "'"
+                    )(ur);
+
+                    response.success = true;
+                    response.message = "Prenotazione annullata, veicolo di nuovo disponibile";
+                    println@Console(" > Veicolo " + vid + " torna AVAILABLE (prenotazione annullata)")()
+                }
+            }
+        } ]
+
+
+        [ getAllStations(request)( response ) {
             println@Console("Richiesta getAllStations")();
 
             query@Database(

@@ -46,7 +46,7 @@ public class StationSoapClient {
     // ── getAllStations ───────────────────────────────────────────────────────
     // Firma CXF: (String request) → List<StationInfo>
     public List<StationInfo> getAllStations() {
-        return stationPort.getAllStations("");
+        return stationPort.getAllStations();
     }
 
     // ── unlock ───────────────────────────────────────────────────────────────
@@ -55,7 +55,9 @@ public class StationSoapClient {
     public UnlockResponse unlock(String vehicleId, String userId, String stationId)
             throws VehicleNotAvailableFaultType_Exception,
                    VehicleNotFoundFaultType_Exception,
-                   HardwareErrorFaultType_Exception {
+                   HardwareErrorFaultType_Exception,
+                   StationNotExistsFaultType_Exception,
+                   InvalidRequestFaultType_Exception {
 
         Holder<Boolean> success = new Holder<>();
         Holder<String>  message = new Holder<>();
@@ -74,7 +76,9 @@ public class StationSoapClient {
     //             Holder<Boolean> success, Holder<String> message)
     public LockResponse lock(String vehicleId, String stationId, String userId)
             throws VehicleNotFoundFaultType_Exception,
-                   HardwareErrorFaultType_Exception {
+                   HardwareErrorFaultType_Exception,
+                   StationNotExistsFaultType_Exception,
+                   InvalidRequestFaultType_Exception {
 
         Holder<Double>  finalBatteryLevel = new Holder<>();
         Holder<Boolean> success           = new Holder<>();
@@ -84,6 +88,39 @@ public class StationSoapClient {
 
         LockResponse resp = new LockResponse();
         resp.setFinalBatteryLevel(finalBatteryLevel.value != null ? finalBatteryLevel.value : 0.0);
+        resp.setSuccess(Boolean.TRUE.equals(success.value));
+        resp.setMessage(message.value);
+        return resp;
+    }
+
+    public ReserveResponse reserve(String vehicleId, String stationId, String userId)
+            throws VehicleNotFoundFaultType_Exception,
+                   StationNotExistsFaultType_Exception,
+                   VehicleNotAvailableFaultType_Exception {
+
+        Holder<Boolean> success = new Holder<>();
+        Holder<String>  message = new Holder<>();
+
+        stationPort.reserve(vehicleId, userId, stationId, success, message);
+
+        ReserveResponse resp = new ReserveResponse();
+        resp.setSuccess(Boolean.TRUE.equals(success.value));
+        resp.setMessage(message.value);
+        return resp;
+    }
+
+    // ── cancelReservation ───────────────────────────────────────────────────
+    public CancelReservationResponse cancelReservation(String vehicleId, String stationId)
+            throws VehicleNotFoundFaultType_Exception,
+                   VehicleNotAvailableFaultType_Exception,
+                   StationNotExistsFaultType_Exception {
+
+        Holder<Boolean> success = new Holder<>();
+        Holder<String>  message = new Holder<>();
+
+        stationPort.cancelReservation(vehicleId, stationId, success, message);
+
+        CancelReservationResponse resp = new CancelReservationResponse();
         resp.setSuccess(Boolean.TRUE.equals(success.value));
         resp.setMessage(message.value);
         return resp;

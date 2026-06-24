@@ -50,6 +50,7 @@ main {
 
         userId = request.userId;
         amount = double(request.amount);
+        vid = request.vehicleId;
         session.userId = userId;
 
         println@Console("\n[BANK] === PRE-AUTHORIZE (" + userId + ") ===")();
@@ -60,12 +61,23 @@ main {
                 "SELECT balance FROM user_bank WHERE user_id = '" + userId + "'"
             )(balRes);
 
+            query@Database(
+                "SELECT * FROM vehicles WHERE vehicle_id = '" + vid + "'"
+            )(vecRes);
+
             if (#balRes.row == 0) {
                 response.success      = false;
                 response.errorCode    = "USER_NOT_FOUND";
                 response.errorMessage = "Utente non trovato";
                 println@Console("[BANK] X User not found: " + userId)()
-            } else {
+            } 
+            else if (#vecRes.row == 0) {
+                response.success      = false;
+                response.errorCode    = "VEHICLE_NOT_FOUND";
+                response.errorMessage = "Veicolo non trovato";
+                println@Console("[BANK] X Vehicle not found: " + vid)()
+            }
+            else {
                 currentBalance = double(balRes.row[0].balance);
                 println@Console("[BANK] Current balance: E" + currentBalance)();
 
@@ -87,8 +99,8 @@ main {
 
                     // 2. Crea autorizzazione
                     update@Database(
-                        "INSERT INTO authorizations (auth_token, user_id, is_reservation, status, expires_at) " +
-                        "VALUES ('" + authToken + "', '" + userId + "', " + request.isRiservation + ", 'ACTIVE', " +
+                        "INSERT INTO authorizations (auth_token, user_id, vehicle_id, is_reservation, status, expires_at) " +
+                        "VALUES ('" + authToken + "', '" + userId + "', '" + vid + "', " + request.isRiservation + ", 'ACTIVE', " +
                         "CURRENT_TIMESTAMP + INTERVAL '30 minutes')"
                     )(ar);
 
