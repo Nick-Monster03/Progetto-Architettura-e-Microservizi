@@ -32,9 +32,9 @@ public class BankSoapClient {
 
         TransformInInterceptor transformInterceptor = new TransformInInterceptor();
         Map<String, String> transformMap = new HashMap<>();
-        transformMap.put("preAuthorizeResponse",  "{bank.acme.com.xsd}preAuthorizeResponse");
-        transformMap.put("commitPaymentResponse", "{bank.acme.com.xsd}commitPaymentResponse");
-        transformMap.put("commitPenaltyResponse", "{bank.acme.com.xsd}commitPenaltyResponse");
+        transformMap.put("preAuthorizeResponse",  "{http://bank.acme.mobility.wsdl.xsd}preAuthorizeResponse");
+        transformMap.put("commitPaymentResponse", "{http://bank.acme.mobility.wsdl.xsd}commitPaymentResponse");
+        transformMap.put("commitPenaltyResponse", "{http://bank.acme.mobility.wsdl.xsd}commitPenaltyResponse");
         transformInterceptor.setInTransformElements(transformMap);
         factory.getInInterceptors().add(transformInterceptor);
 

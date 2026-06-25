@@ -74,7 +74,7 @@ main {
             else if (#vecRes.row == 0) {
                 response.success      = false;
                 response.errorCode    = "VEHICLE_NOT_FOUND";
-                response.errorMessage = "Veicolo non trovato";
+                response.errorMessage = "Veicolo non trovato o non disponibile";
                 println@Console("[BANK] X Vehicle not found: " + vid)()
             }
             else {

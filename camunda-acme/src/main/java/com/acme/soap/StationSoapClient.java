@@ -33,9 +33,11 @@ public class StationSoapClient {
 
         TransformInInterceptor transformInterceptor = new TransformInInterceptor();
         Map<String, String> transformMap = new HashMap<>();
-        transformMap.put("getAllStationsResponse", "{station.acme.com.xsd}getAllStationsResponse");
-        transformMap.put("unlockResponse",         "{station.acme.com.xsd}unlockResponse");
-        transformMap.put("lockResponse",           "{station.acme.com.xsd}lockResponse");
+        transformMap.put("getAllStationsResponse",      "{http://acmemobility.org/station.xsd}getAllStationsResponse");
+        transformMap.put("unlockResponse",              "{http://acmemobility.org/station.xsd}unlockResponse");
+        transformMap.put("lockResponse",                "{http://acmemobility.org/station.xsd}lockResponse");
+        transformMap.put("reserveResponse",             "{http://acmemobility.org/station.xsd}reserveResponse");
+        transformMap.put("cancelReservationResponse",   "{http://acmemobility.org/station.xsd}cancelReservationResponse");
         transformInterceptor.setInTransformElements(transformMap);
         factory.getInInterceptors().add(transformInterceptor);
 
