@@ -56,7 +56,7 @@
   </wsdl:binding>
   <wsdl:service name="BatterySocketService">
     <wsdl:port name="BatterySocketServicePort" binding="tns:BatterySocketSOAPBinding">
-      <soap:address location="http://localhost:8085"/>
+      <soap:address location="socket://0.0.0.0:8085"/>
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

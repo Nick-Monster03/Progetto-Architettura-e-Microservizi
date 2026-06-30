@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<wsdl:definitions targetNamespace="bank.acme.com.wsdl" xmlns:xsd1="bank.acme.com.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="bank.acme.com.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+<wsdl:definitions targetNamespace="http://bank.acme.mobility.wsdl.wsdl" xmlns:xsd1="http://bank.acme.mobility.wsdl.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://bank.acme.mobility.wsdl.wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
   <wsdl:types>
-    <xs:schema targetNamespace="bank.acme.com.xsd" xmlns:sch="bank.acme.com.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="preAuthorize"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="isRiservation" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="amount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="cardNumber" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="preAuthorizeResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorCode" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="blockedAmount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPayment"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="duration" type="xs:int"/><xs:element maxOccurs="1" minOccurs="1" name="finalAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="penalty" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="kilometers" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="batteryLevel" type="xs:int"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPaymentResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="chargedAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorCode" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="receiptId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPenalty"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="penaltyAmount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPenaltyResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="chargedAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="receiptId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="cancelAuth"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="0" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="isExpired" type="xs:boolean"/></xs:sequence></xs:complexType></xs:element></xs:schema>
+    <xs:schema targetNamespace="http://bank.acme.mobility.wsdl.xsd" xmlns:sch="http://bank.acme.mobility.wsdl.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="preAuthorize"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="isRiservation" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="1" name="amount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="vehicleId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="userId" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="cardNumber" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="preAuthorizeResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorCode" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="blockedAmount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPayment"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="duration" type="xs:int"/><xs:element maxOccurs="1" minOccurs="1" name="finalAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="penalty" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="kilometers" type="xs:double"/><xs:element maxOccurs="1" minOccurs="1" name="batteryLevel" type="xs:int"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPaymentResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="chargedAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="errorCode" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="receiptId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPenalty"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="penaltyAmount" type="xs:double"/></xs:sequence></xs:complexType></xs:element><xs:element name="commitPenaltyResponse"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="1" name="success" type="xs:boolean"/><xs:element maxOccurs="1" minOccurs="0" name="chargedAmount" type="xs:double"/><xs:element maxOccurs="1" minOccurs="0" name="errorMessage" type="xs:string"/><xs:element maxOccurs="1" minOccurs="0" name="receiptId" type="xs:string"/></xs:sequence></xs:complexType></xs:element><xs:element name="cancelAuth"><xs:complexType><xs:sequence><xs:element maxOccurs="1" minOccurs="0" name="reason" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="authToken" type="xs:string"/><xs:element maxOccurs="1" minOccurs="1" name="isExpired" type="xs:boolean"/></xs:sequence></xs:complexType></xs:element></xs:schema>
   </wsdl:types>
+  <wsdl:message name="CommitPenaltyRequest">
+    <wsdl:part name="body" element="xsd1:commitPenalty">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="PreAuthorizeRequest">
+    <wsdl:part name="body" element="xsd1:preAuthorize">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="CommitPaymentRequest">
+    <wsdl:part name="body" element="xsd1:commitPayment">
+    </wsdl:part>
+  </wsdl:message>
   <wsdl:message name="CommitPaymentResponse">
     <wsdl:part name="body" element="xsd1:commitPaymentResponse">
     </wsdl:part>
@@ -11,24 +23,12 @@
     <wsdl:part name="body" element="xsd1:preAuthorizeResponse">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="CommitPaymentRequest">
-    <wsdl:part name="body" element="xsd1:commitPayment">
-    </wsdl:part>
-  </wsdl:message>
-  <wsdl:message name="CommitPenaltyResponse">
-    <wsdl:part name="body" element="xsd1:commitPenaltyResponse">
-    </wsdl:part>
-  </wsdl:message>
   <wsdl:message name="CancelAuthRequest">
     <wsdl:part name="body" element="xsd1:cancelAuth">
     </wsdl:part>
   </wsdl:message>
-  <wsdl:message name="CommitPenaltyRequest">
-    <wsdl:part name="body" element="xsd1:commitPenalty">
-    </wsdl:part>
-  </wsdl:message>
-  <wsdl:message name="PreAuthorizeRequest">
-    <wsdl:part name="body" element="xsd1:preAuthorize">
+  <wsdl:message name="CommitPenaltyResponse">
+    <wsdl:part name="body" element="xsd1:commitPenaltyResponse">
     </wsdl:part>
   </wsdl:message>
   <wsdl:portType name="BankPort">
@@ -96,7 +96,7 @@
   </wsdl:binding>
   <wsdl:service name="BankPortService">
     <wsdl:port name="BankPortServicePort" binding="tns:BankPortSOAPBinding">
-      <soap:address location="http://localhost:8008"/>
+      <soap:address location="socket://0.0.0.0:8008"/>
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

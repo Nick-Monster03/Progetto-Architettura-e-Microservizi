@@ -1,7 +1,7 @@
 include "console.iol"
 include "time.iol"
-include "fleet-management/tracking/TrackingInterface.iol"
-include "fleet-management/battery/BatteryInterface.iol"
+include "../fleet-management/tracking/TrackingInterface.iol"
+include "../fleet-management/battery/BatteryInterface.iol"
 include "SimulatorInterface.iol"
 
 

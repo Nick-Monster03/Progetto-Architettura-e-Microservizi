@@ -2,16 +2,20 @@ const GATEWAY_URL = "http://localhost:8082";
 const CAMUNDA_URL = "http://localhost:8080/engine-rest";
 
 const app = {
-    map: null,
-    user: null,
-    markers: {},
-    currentRentalId: null,
-    currentProcessId: null,   // ID istanza processo Camunda attiva
-    currentStationId: "s1",   // Stazione di default per i test
+    map:              null,
+    user:             null,
+    markers:          {},   // vehicle circleMarkers (veicoli IN_USE, posizione real-time)
+    stationMarkers:   {},   // station divIcon markers
+    vehicleStationMap:{},   // vehicleId → stationId (popolato da refreshMap)                                                               
+    currentRentalId:  null,
+    currentProcessId: null,
+    currentStationId: "s1",
 
+    // ─── INIT ────────────────────────────────────────────────
     init: function () {
-        this.map = L.map('map', { zoomControl: false }).setView([41.8902, 12.4922], 14);
-        
+        // Centro su Bari (dove sono le stazioni del seed)
+        this.map = L.map('map', { zoomControl: false }).setView([41.1200, 16.8700], 15);
+
         L.control.zoom({ position: 'topright' }).addTo(this.map);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -19,21 +23,53 @@ const app = {
             attribution: '© OpenStreetMap © CARTO'
         }).addTo(this.map);
 
+        this._addLegend();
+
         const savedUser = localStorage.getItem('acme_user');
         if (savedUser) {
             this.user = savedUser.toLowerCase();
-            this.updateUI('logged');
+
+            const savedRentalId  = localStorage.getItem('acme_rental_id');
+            const savedProcessId = localStorage.getItem('acme_process_id');
+            const savedStationId = localStorage.getItem('acme_station_id');
+
+            if (savedRentalId && savedProcessId) {
+                this.currentRentalId  = savedRentalId;
+                this.currentProcessId = savedProcessId;
+                this.currentStationId = savedStationId || 's1';
+                this.updateUI('renting');
+            } else {
+                this.updateUI('logged');
+            }
+
             this.refreshMap();
         }
     },
 
-    // --- AUTENTICAZIONE ---
+    _addLegend: function () {
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div');
+            div.style.cssText = 'background:white;padding:8px 12px;border-radius:10px;' +
+                                'box-shadow:0 2px 8px rgba(0,0,0,0.2);font-size:12px;line-height:2';
+            div.innerHTML =
+                '<b>Legenda</b><br>' +
+                '<span style="color:#1a73e8">🏢</span> Stazione <span style="font-size:9px;color:#666">(● verde = ha disponibili)</span><br>' +
+                '🟢 Veicolo disponibile<br>' +
+                '🟡 Veicolo prenotato<br>' +
+                '🔴 Veicolo in uso / movimento<br>' +
+                '⚫ Non disponibile';
+            return div;
+        };
+        legend.addTo(this.map);
+    },
 
-    closeModal: function(modalId) {
-        const modalEl = document.getElementById(modalId);
-        if (modalEl) {
-            let modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
+    // ─── AUTENTICAZIONE ──────────────────────────────────────
+    closeModal: function (modalId) {
+        const el = document.getElementById(modalId);
+        if (el) {
+            const m = bootstrap.Modal.getInstance(el);
+            if (m) m.hide();
         }
         document.body.classList.remove('modal-open');
         document.body.style.overflow = 'auto';
@@ -41,13 +77,11 @@ const app = {
     },
 
     login: function () {
-        const user = document.getElementById('username').value;
-        const pass = document.getElementById('password').value;
-
-        if (!user || !pass) {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        if (!user || !pass)
             return Swal.fire({ icon: 'error', title: 'Oops...', text: 'Inserisci username e password!' });
-        }
-        
+
         this.closeModal('loginModal');
         Swal.fire({ title: 'Accesso in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -56,28 +90,28 @@ const app = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pass })
         })
-        .then(res => res.json())
+        .then(r => r.json())
         .then(res => {
             if (res.success) {
-                this.user = user;
-                localStorage.setItem('acme_user', user.toLowerCase());
+                this.user = user.toLowerCase();
+                localStorage.setItem('acme_user', this.user);
                 this.updateUI('logged');
                 this.refreshMap();
-                Swal.fire({ icon: 'success', title: 'Accesso Effettuato', text: res.message, timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'Accesso Effettuato', text: res.message,
+                            timer: 1500, showConfirmButton: false });
             } else {
                 Swal.fire({ icon: 'error', title: 'Accesso Negato', text: res.message });
             }
         })
-    .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare UserService.' }));    },
+        .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare UserService.' }));
+    },
 
-    register: function() {
-        const user = document.getElementById('reg-username').value;
-        const pass = document.getElementById('reg-password').value;
-
-        if (!user || !pass) {
+    register: function () {
+        const user = document.getElementById('reg-username').value.trim();
+        const pass = document.getElementById('reg-password').value.trim();
+        if (!user || !pass)
             return Swal.fire({ icon: 'warning', text: 'Inserisci username e password!' });
-        }
-        
+
         this.closeModal('registerModal');
         Swal.fire({ title: 'Registrazione in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -86,10 +120,10 @@ const app = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pass })
         })
-        .then(res => res.json())
+        .then(r => r.json())
         .then(res => {
             if (res.success) {
-                document.getElementById('username').value = user; 
+                document.getElementById('username').value = user;
                 Swal.fire({ icon: 'success', title: 'Registrato!', text: res.message });
             } else {
                 Swal.fire({ icon: 'error', title: 'Errore', text: res.message });
@@ -98,76 +132,185 @@ const app = {
         .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare il Gateway.' }));
     },
 
-    logout: function() {
-        this.user = null;
+    logout: function () {
+        this.user             = null;
         this.currentProcessId = null;
+        this.currentRentalId  = null;
         localStorage.removeItem('acme_user');
         this.updateUI('guest');
     },
 
-    // --- GESTIONE INTERFACCIA (UI) ---
-
-    updateUI: function(state) {
-        const guestSec   = document.getElementById('guest-section');
-        const loggedSec  = document.getElementById('logged-section');
-        const rentingSec = document.getElementById('renting-section');
-
-        guestSec.classList.add('d-none');
-        loggedSec.classList.add('d-none');
-        rentingSec.classList.add('d-none');
+    // ─── UI ─────────────────────────────────────────────────
+    updateUI: function (state) {
+        document.getElementById('guest-section').classList.add('d-none');
+        document.getElementById('logged-section').classList.add('d-none');
+        document.getElementById('renting-section').classList.add('d-none');
 
         if (state === 'guest') {
-            guestSec.classList.remove('d-none');
+            document.getElementById('guest-section').classList.remove('d-none');
         } else if (state === 'logged') {
             document.getElementById('user-display').innerText = this.user;
-            loggedSec.classList.remove('d-none');
+            document.getElementById('logged-section').classList.remove('d-none');
         } else if (state === 'renting') {
             document.getElementById('current-vehicle-id').innerText = this.currentRentalId;
-            rentingSec.classList.remove('d-none');
+            document.getElementById('renting-section').classList.remove('d-none');
         }
     },
 
-    // --- LOGICA VEICOLI E MAPPA ---
+    // ─── MAPPA ──────────────────────────────────────────────
 
+    /**
+     * refreshMap: chiama /api/stations (proxy → StationService SOAP getAllStations)
+     * e per ogni veicolo IN_USE chiede la posizione real-time al Fleet Gateway.
+     */
     refreshMap: function () {
-        const vehicleIds = ["v1", "v2", "v3", "v-test"];
-        vehicleIds.forEach(vid => {
-            fetch(`${GATEWAY_URL}/getStatus?vehicleId=${vid}`)
-                .then(res => res.ok ? res.json() : Promise.reject("Errore HTTP"))
-                .then(data => this.updateMarker(data))
-                .catch(() => console.log(`Veicolo ${vid} non reperibile al momento.`));
-        });
+        fetch('/api/stations')
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(stations => {
+                const inUseIds = [];
+
+                stations.forEach(station => {
+                    this._updateStationMarker(station);
+                    station.vehicles.forEach(v => {
+                        // Aggiorna mappa vehicleId → stationId
+                        this.vehicleStationMap[v.vehicleId] = station.stationId;
+                        if (v.status === 'IN_USE' || v.status === 'UNLOCKED') {
+                            inUseIds.push(v.vehicleId);
+                        }
+                    });
+                });
+
+                // Ottieni posizione real-time dei veicoli in movimento
+                inUseIds.forEach(vid => {
+                    fetch(`${GATEWAY_URL}/getStatus?vehicleId=${vid}`)
+                        .then(r => r.ok ? r.json() : Promise.reject())
+                        .then(data => this._updateVehicleMarker(data))
+                        .catch(() => console.log(`[refreshMap] ${vid} non tracciabile.`));
+                });
+
+                // Rimuovi marker di veicoli che non sono più in movimento
+                Object.keys(this.markers).forEach(vid => {
+                    if (!inUseIds.includes(vid)) {
+                        this.map.removeLayer(this.markers[vid]);
+                        delete this.markers[vid];
+                    }
+                });
+            })
+            .catch(err => console.error('[refreshMap] Errore:', err));
     },
 
-    updateMarker: function (vehicleData) {
-        if (!vehicleData || !vehicleData.latitude || (vehicleData.latitude === 0 && vehicleData.longitude === 0)) return;
+    /**
+     * Disegna (o aggiorna) il marker di una stazione.
+     * Usa un divIcon stilizzato con il nome della stazione e un pallino
+     * verde/rosso che indica se ci sono veicoli disponibili.
+     */
+    _updateStationMarker: function (station) {
+        const availableCount = station.vehicles.filter(v => v.status === 'AVAILABLE').length;
+        const dotColor       = availableCount > 0 ? '#2ecc71' : '#e74c3c';
 
-        const isRented = vehicleData.status === "RENTED" || vehicleData.status === "IN_USE";
-        const color = isRented ? "#e74c3c" : "#2ecc71";
+        // ── Contenuto del popup ───────────────────────────────────────────────
+        const vehiclesHtml = station.vehicles.length === 0
+            ? '<small class="text-muted">Nessun veicolo presente</small>'
+            : station.vehicles.map(v => {
+                const statusMap = {
+                    'AVAILABLE': { badge: 'bg-success',          label: 'Disponibile' },
+                    'RESERVED':  { badge: 'bg-warning text-dark', label: 'Prenotato'   },
+                    'IN_USE':    { badge: 'bg-danger',            label: 'In uso'       },
+                    'UNLOCKED':  { badge: 'bg-danger',            label: 'Sbloccato'    },
+                    'CHARGING':  { badge: 'bg-info text-dark',    label: 'In carica'    },
+                    'BROKEN':    { badge: 'bg-secondary',         label: 'Guasto'       }
+                };
+                const s = statusMap[v.status] || { badge: 'bg-secondary', label: v.status };
 
-        if (this.markers[vehicleData.vehicleId]) {
-            this.markers[vehicleData.vehicleId].setLatLng([vehicleData.latitude, vehicleData.longitude]);
-            this.markers[vehicleData.vehicleId].setStyle({ color: color, fillColor: color });
-        } else {
-            const marker = L.circleMarker([vehicleData.latitude, vehicleData.longitude], {
-                color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 0.9, radius: 10
-            }).addTo(this.map);
+                const actionBtn = v.status === 'AVAILABLE'
+                    ? `<button class="btn btn-sm btn-warning mt-1 w-100 fw-bold"
+                               onclick="app.prenota('${v.vehicleId}', '${station.stationId}')">
+                           <i class="bi bi-calendar-check"></i> Prenota
+                       </button>`
+                    : '';
 
-            marker.bindPopup(`
-                <div class="text-center p-1">
-                    <h6 class="fw-bold mb-1"><i class="bi bi-scooter"></i> ${vehicleData.vehicleId}</h6>
-                    <span class="badge ${isRented ? 'bg-danger' : 'bg-success'} mb-2">${vehicleData.status}</span><br>
-                    <small>🔋 Batteria: <b>${vehicleData.batteryLevel}%</b></small><br>
-                    <button class="btn btn-sm btn-outline-warning mt-2 fw-bold w-100" onclick="app.prenota('${vehicleData.vehicleId}')">Prenota</button>
+                return `<div class="border rounded p-1 mb-1 text-start">
+                            <span class="fw-bold">${v.vehicleId}</span>
+                            <span class="badge ${s.badge} ms-1">${s.label}</span>
+                            <br><small>🔋 ${Math.round(v.battery)}%</small>
+                            ${actionBtn}
+                        </div>`;
+            }).join('');
+
+        const popupContent = `
+            <div style="min-width:200px">
+                <h6 class="fw-bold mb-1">🏢 ${station.name}</h6>
+                <small class="text-muted">${station.stationId}
+                    &nbsp;·&nbsp; ${availableCount} disponibili su ${station.vehicles.length}
+                </small>
+                <hr class="my-2">
+                ${vehiclesHtml}
+            </div>`;
+
+        // ── Icona ────────────────────────────────────────────────────────────
+        const iconHtml = `
+            <div style="position:relative;display:inline-block">
+                <div style="background:#1a73e8;color:white;border-radius:8px;
+                            padding:4px 10px;font-weight:bold;font-size:11px;
+                            border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);
+                            white-space:nowrap;cursor:pointer">
+                    🏢 ${station.name}
                 </div>
-            `);
+                <div style="position:absolute;top:-4px;right:-4px;width:11px;height:11px;
+                            border-radius:50%;background:${dotColor};
+                            border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3)">
+                </div>
+            </div>`;
 
-            this.markers[vehicleData.vehicleId] = marker;
+        const icon = L.divIcon({ html: iconHtml, className: '', iconAnchor: [0, 34] });
+
+        if (this.stationMarkers[station.stationId]) {
+            this.stationMarkers[station.stationId].setIcon(icon);
+            this.stationMarkers[station.stationId].setPopupContent(popupContent);
+        } else {
+            const marker = L.marker([station.latitude, station.longitude], { icon })
+                .addTo(this.map);
+            marker.bindPopup(popupContent, { maxWidth: 250 });
+            this.stationMarkers[station.stationId] = marker;
         }
     },
 
-    // --- NOLEGGIO ---
+    /**
+     * Disegna (o aggiorna) il marker circolare di un veicolo IN_USE.
+     * La posizione è real-time dal Fleet Gateway.
+     */
+    _updateVehicleMarker: function (vehicleData) {
+        if (!vehicleData) return;
+        const lat = vehicleData.latitude;
+        const lng = vehicleData.longitude;
+        if (!lat || (lat === 0 && lng === 0)) return;
 
+        const vid    = vehicleData.vehicleId;
+        const popup  = `<div class="text-center p-1">
+                            <h6 class="fw-bold mb-1">🛴 ${vid}</h6>
+                            <span class="badge bg-danger mb-2">IN USO</span><br>
+                            <small>🔋 Batteria: <b>${vehicleData.batteryLevel}%</b></small>
+                        </div>`;
+
+        if (this.markers[vid]) {
+            this.markers[vid].setLatLng([lat, lng]);
+            this.markers[vid].setPopupContent(popup);
+        } else {
+            const m = L.circleMarker([lat, lng], {
+                color: '#ffffff', weight: 2,
+                fillColor: '#e74c3c', fillOpacity: 0.9, radius: 10
+            }).addTo(this.map);
+            m.bindPopup(popup);
+            this.markers[vid] = m;
+        }
+    },
+
+    // ─── NOLEGGIO ────────────────────────────────────────────
+
+    /** Simula la scansione QR: l'utente digita l'ID del veicolo */
     scanQR: function () {
         Swal.fire({
             title: 'Inquadra il QR Code',
@@ -178,16 +321,19 @@ const app = {
             confirmButtonText: 'Sblocca',
             cancelButtonText: 'Annulla',
             confirmButtonColor: '#198754'
-        }).then((result) => {
-            if (result.isConfirmed && result.value) {
-                this.startRental(result.value);
-            }
+        }).then(result => {
+            if (result.isConfirmed && result.value)
+                this.startRental(result.value.trim());
         });
     },
 
-    // Avvia il processo BPMN su Camunda per il noleggio immediato
+    /** Avvia processo BPMN di Noleggio Immediato */
     startRental: function (vehicleId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima!', 'warning');
+
+        // Recupera la stazione del veicolo dall'ultima refreshMap
+        const stationId = this.vehicleStationMap[vehicleId] || 's1';
+        this.currentStationId = stationId;
 
         Swal.fire({ title: 'Avvio noleggio...', text: 'Contatto la banca per la pre-autorizzazione...', didOpen: () => Swal.showLoading() });
 
@@ -196,23 +342,25 @@ const app = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 variables: {
-                    userId:        { value: this.user,    type: "String"  },
-                    vehicleId:     { value: vehicleId,    type: "String"  },
-                    stationId:     { value: this.currentStationId, type: "String" },
-                    isRiservation: { value: false,        type: "Boolean" },
-                    rentalType:    { value: "immediate",  type: "String"  },
+                    userId:        { value: this.user,      type: "String"  },
+                    vehicleId:     { value: vehicleId,      type: "String"  },
+                    stationId:     { value: stationId,      type: "String"  },
+                    isRiservation: { value: false,          type: "Boolean" },
+                    rentalType:    { value: "immediate",    type: "String"  },
                     card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
                 }
             })
         })
-        .then(res => {
-            if (!res.ok) throw new Error("Camunda non raggiungibile (status " + res.status + ")");
-            return res.json();
+        .then(r => {
+            if (!r.ok) throw new Error("Camunda non raggiungibile (status " + r.status + ")");
+            return r.json();
         })
         .then(proc => {
-            // Salva l'ID istanza per poter inviare messaggi in seguito (es. stopRental)
             this.currentProcessId = proc.id;
             this.currentRentalId  = vehicleId;
+            localStorage.setItem('acme_rental_id',  vehicleId);
+            localStorage.setItem('acme_process_id', proc.id);
+            localStorage.setItem('acme_station_id', this.currentStationId);
             this.updateUI('renting');
             this.refreshMap();
             Swal.fire({
@@ -224,13 +372,12 @@ const app = {
         .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
     },
 
-    // Termina il noleggio inviando il messaggio "vehicleReturned" al processo Camunda
+    /** Termina il noleggio: invia Message_endRental a Camunda */
     stopRental: function () {
         if (!this.currentRentalId) return;
 
         Swal.fire({ title: 'Chiusura noleggio...', text: 'Calcolo il costo finale...', didOpen: () => Swal.showLoading() });
 
-        // Invia il messaggio al processo Camunda per far avanzare il flusso alla riconsegna
         fetch(`${CAMUNDA_URL}/message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -242,34 +389,40 @@ const app = {
                 }
             })
         })
-        .then(res => {
-            if (!res.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
+        .then(r => {
+            if (!r.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
             this.currentRentalId  = null;
             this.currentProcessId = null;
+            localStorage.removeItem('acme_rental_id');
+            localStorage.removeItem('acme_process_id');
+            localStorage.removeItem('acme_station_id');
             this.updateUI('logged');
             this.refreshMap();
-            Swal.fire({
-                icon: 'info',
-                title: 'Noleggio Terminato',
-                text: 'Veicolo riconsegnato. Il pagamento finale verrà elaborato a breve.'
-            });
+            Swal.fire({ icon: 'info', title: 'Noleggio Terminato',
+                        text: 'Veicolo riconsegnato. Il pagamento finale verrà elaborato a breve.' });
         })
         .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
     },
 
-    // Avvia il processo BPMN su Camunda per la prenotazione breve
-    prenota: function (vehicleId) {
+    /**
+     * Avvia processo BPMN di Prenotazione Breve.
+     * stationId viene passato dal pulsante nel popup della stazione.
+     */
+    prenota: function (vehicleId, stationId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima di prenotare!', 'warning');
-        
+
+        // Imposta la stazione corretta ricevuta dal marker
+        this.currentStationId = stationId || this.vehicleStationMap[vehicleId] || 's1';
+
         Swal.fire({
             title: `Prenotare ${vehicleId}?`,
-            text: "Ti riserviamo il veicolo per 30 minuti.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#ffc107',
+            html:  `Stazione: <b>${this.currentStationId}</b><br>Il veicolo verrà riservato per 30 minuti.`,
+            icon:  'question',
+            showCancelButton:  true,
+            confirmButtonColor:'#ffc107',
             confirmButtonText: 'Sì, prenota',
-            cancelButtonText: 'Annulla'
-        }).then((result) => {
+            cancelButtonText:  'Annulla'
+        }).then(result => {
             if (!result.isConfirmed) return;
 
             Swal.fire({ title: 'Prenotazione in corso...', didOpen: () => Swal.showLoading() });
@@ -279,42 +432,46 @@ const app = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     variables: {
-                        userId:        { value: this.user,    type: "String"  },
-                        vehicleId:     { value: vehicleId,    type: "String"  },
-                        stationId:     { value: this.currentStationId, type: "String" },
-                        isRiservation: { value: true,         type: "Boolean" },
-                        rentalType:    { value: "reservation", type: "String"  },
+                        userId:        { value: this.user,              type: "String"  },
+                        vehicleId:     { value: vehicleId,              type: "String"  },
+                        stationId:     { value: this.currentStationId,  type: "String"  },
+                        isRiservation: { value: true,                   type: "Boolean" },
+                        rentalType:    { value: "reserve",          type: "String"  },
                         card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
                     }
                 })
             })
-            .then(res => {
-                if (!res.ok) throw new Error("Camunda non raggiungibile");
-                return res.json();
+            .then(r => {
+                if (!r.ok) throw new Error("Camunda non raggiungibile");
+                return r.json();
             })
             .then(proc => {
                 this.currentProcessId = proc.id;
                 this.currentRentalId  = vehicleId;
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Prenotazione Confermata!',
-                    html: `Veicolo <b>${vehicleId}</b> riservato per 30 minuti.<br><small class="text-muted">Process ID: ${proc.id}</small>`
-                });
                 this.refreshMap();
+                Swal.fire({
+                    icon:  'success',
+                    title: 'Prenotazione Confermata!',
+                    html:  `Veicolo <b>${vehicleId}</b> riservato per 30 minuti.<br>
+                            <small class="text-muted">
+                                Presentati alla stazione <b>${this.currentStationId}</b> per il ritiro.
+                            </small>`
+                });
             })
             .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
         });
     },
 
-    // Annulla la prenotazione inviando il messaggio "cancelRiservation" a Camunda
+    /** Annulla la prenotazione attiva */
     cancelBooking: function () {
-        if (!this.currentProcessId) return Swal.fire('Attenzione', 'Nessuna prenotazione attiva.', 'warning');
+        if (!this.currentProcessId)
+            return Swal.fire('Attenzione', 'Nessuna prenotazione attiva.', 'warning');
 
         Swal.fire({
             title: 'Annullare la prenotazione?',
-            icon: 'warning',
+            icon:  'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sì, annulla',
+            confirmButtonText:'Sì, annulla',
             cancelButtonText: 'No'
         }).then(result => {
             if (!result.isConfirmed) return;
@@ -323,12 +480,12 @@ const app = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messageName: "Message_cancelReservation",
+                    messageName:       "Message_cancelReservation",
                     processInstanceId: this.currentProcessId
                 })
             })
-            .then(res => {
-                if (!res.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
+            .then(r => {
+                if (!r.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
                 this.currentProcessId = null;
                 this.currentRentalId  = null;
                 this.refreshMap();
@@ -339,5 +496,4 @@ const app = {
     }
 };
 
-// Avvio applicazione al caricamento
 document.addEventListener('DOMContentLoaded', () => app.init());

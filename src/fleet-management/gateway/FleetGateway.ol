@@ -61,29 +61,23 @@ service FleetGateway {
             uid = request.userId;
             println@Console("START del Tracking -> Veicolo: " + vid + ", User: " + uid)();
 
-            // Leggo lo status attuale dal DB tramite TrackingService
-            getInfo@TrackingClient( { .vehicleId = vid } )( currentInfo );
+            scope( init_tracking ) {
+                install( default =>
+                    response.success = false;
+                    response.message = "Servizio non raggiungibile: " + init_tracking.default.message;
+                    println@Console(" > ERRORE avvio tracking per " + vid + ": " + init_tracking.default.message)()
+                );
 
-            if ( currentInfo.status == "IN_USE" || currentInfo.status == "RESERVED" ) {
-                response.success = false;
-                response.message = "Veicolo non disponibile (stato: " + currentInfo.status + ")";
-                println@Console(" > ERRORE: Veicolo " + vid + " è in stato " + currentInfo.status)()
-            } else {
-                // Leggo batteria iniziale dal DB tramite BatteryService
+                getInfo@TrackingClient( { .vehicleId = vid } )( currentInfo );
                 getBattery@BatteryClient( { .vehicleId = vid } )( batInfo );
                 println@Console("Dati iniziali per " + vid + ": KM=" + currentInfo.totalKm + ", Bat=" + batInfo.level + "%")();
 
-                // Salvo solo il delta di sessione in memoria (startKm e startBattery)
                 synchronized( sessionLock ) {
                     global.active_rentals.(vid).startKm      = currentInfo.totalKm;
                     global.active_rentals.(vid).startBattery = batInfo.level;
                     println@Console(" > Sessione salvata: startKm=" + currentInfo.totalKm + ", startBat=" + batInfo.level)()
                 };
 
-                // Aggiorno lo status nel DB tramite TrackingService
-                setStatus@TrackingClient( { .vehicleId = vid, .status = "IN_USE" } )( setResp );
-
-                // Avvio simulazione
                 sim_request.vehicleId = vid;
                 startSimulation@SimulatorClient( sim_request );
                 println@Console("Simulazione avviata")();
@@ -98,71 +92,85 @@ service FleetGateway {
             uid = request.userId;
             println@Console("STOP Tracking -> Veicolo: " + vid + ", User: " + uid)();
 
-            // Leggo lo status attuale dal DB
-            getInfo@TrackingClient( { .vehicleId = vid } )( currentInfo );
+            scope( read_status ) {
+                install( default =>
+                    response.success = false;
+                    response.message = "Servizio non raggiungibile: " + read_status.default.message;
+                    response.kilometers = 0.0;
+                    response.batteryConsumed = 0.0;
+                    response.finalBattery = 0;
+                    println@Console(" > ERRORE stop tracking per " + vid + ": " + read_status.default.message)()
+                );
 
-            if ( currentInfo.status != "IN_USE" ) {
-                response.success = false;
-                response.message = "Veicolo non in uso (stato: " + currentInfo.status + ")";
-                response.kilometers = 0.0;
-                response.batteryConsumed = 0.0;
-                response.finalBattery = 0;
-                println@Console(" > ERRORE: Veicolo " + vid + " non è IN_USE")()
-            } else {
-                // Fermo la simulazione e ricevo i dati finali
-                sim_request.vehicleId = vid;
-                stopSimulation@SimulatorClient( sim_request )( simStopResp );
-                println@Console("Simulazione fermata - Dati finali ricevuti")();
+                getInfo@TrackingClient( { .vehicleId = vid } )( currentInfo );
 
-                deltaKm  = 0.0;
-                deltaBat = 0.0;
+                if ( currentInfo.status != "IN_USE" ) {
+                    response.success = false;
+                    response.message = "Veicolo non in uso (stato: " + currentInfo.status + ")";
+                    response.kilometers = 0.0;
+                    response.batteryConsumed = 0.0;
+                    response.finalBattery = 0;
+                    println@Console(" > ERRORE: Veicolo " + vid + " non è IN_USE")()
+                } else {
+                    sim_request.vehicleId = vid;
+                    stopSimulation@SimulatorClient( sim_request )( simStopResp );
+                    println@Console("Simulazione fermata - Dati finali ricevuti")();
 
-                synchronized( sessionLock ) {
-                    if ( is_defined( global.active_rentals.(vid) ) ) {
-                        startK = global.active_rentals.(vid).startKm;
-                        startB = global.active_rentals.(vid).startBattery;
+                    deltaKm  = 0.0;
+                    deltaBat = 0.0;
 
-                        deltaKm  = simStopResp.totalKm - startK;
-                        deltaBat = double(startB - simStopResp.level);
+                    synchronized( sessionLock ) {
+                        if ( is_defined( global.active_rentals.(vid) ) ) {
+                            startK = global.active_rentals.(vid).startKm;
+                            startB = global.active_rentals.(vid).startBattery;
 
-                        undef( global.active_rentals.(vid) )
-                    } else {
-                        println@Console("WARN: Nessuna sessione attiva trovata per " + vid)()
-                    }
-                };
+                            deltaKm  = simStopResp.totalKm - startK;
+                            deltaBat = double(startB - simStopResp.level);
 
-                // Aggiorno lo status nel DB tramite TrackingService
-                setStatus@TrackingClient( { .vehicleId = vid, .status = "AVAILABLE" } )( setResp );
+                            undef( global.active_rentals.(vid) )
+                        } else {
+                            println@Console("WARN: Nessuna sessione attiva trovata per " + vid)()
+                        }
+                    };
 
-                response.success        = true;
-                response.message        = "Noleggio terminato";
-                response.kilometers     = deltaKm;
-                response.batteryConsumed = deltaBat;
-                response.finalBattery   = simStopResp.level;
+                    response.success         = true;
+                    response.message         = "Noleggio terminato";
+                    response.kilometers      = deltaKm;
+                    response.batteryConsumed = deltaBat;
+                    response.finalBattery    = simStopResp.level;
 
-                println@Console(" > Report: KM=" + deltaKm + ", BatCons=" + deltaBat)()
+                    println@Console(" > Report: KM=" + deltaKm + ", BatCons=" + deltaBat)()
+                }
             }
         } ]
 
         [ getStatus( request )( response ) {
             vid = request.vehicleId;
-            
-            println@Console("[GW] Chiamo TrackingService...")();
-            getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
-            println@Console("[GW] Tracking ha risposto!")();
 
-            println@Console("[GW] Chiamo BatteryService...")();
-            getBattery@BatteryClient( { .vehicleId = vid } )( batLevel );
-            println@Console("[GW] Battery ha risposto: " + batLevel.level + "%")();
+            scope( read_vehicle ) {
+                install( default =>
+                    response.success = false;
+                    response.vehicleId = vid;
+                    println@Console(" > ERRORE getStatus per " + vid + ": " + read_vehicle.default.message)()
+                );
 
-            response.vehicleId    = vid;
-            response.batteryLevel = batLevel.level;
-            response.latitude     = trackInfo.location.latitude;
-            response.longitude    = trackInfo.location.longitude;
-            response.status       = trackInfo.status;
+                println@Console("[GW] Chiamo TrackingService...")();
+                getInfo@TrackingClient( { .vehicleId = vid } )( trackInfo );
+                println@Console("[GW] Tracking ha risposto!")();
 
-            println@Console("GetStatus per veicolo " + vid + ": Bat=" + batLevel.level + ", Loc=(" + response.latitude + "," + response.longitude + "), Status=" + response.status)()
+                println@Console("[GW] Chiamo BatteryService...")();
+                getBattery@BatteryClient( { .vehicleId = vid } )( batLevel );
+                println@Console("[GW] Battery ha risposto: " + batLevel.level + "%")();
+
+                response.success       = true;
+                response.vehicleId     = vid;
+                response.batteryLevel  = batLevel.level;
+                response.latitude      = trackInfo.location.latitude;
+                response.longitude     = trackInfo.location.longitude;
+                response.status        = trackInfo.status;
+
+                println@Console("GetStatus per veicolo " + vid + ": Bat=" + batLevel.level + ", Loc=(" + response.latitude + "," + response.longitude + "), Status=" + response.status)()
+            }
         } ]
     }
 }
-
