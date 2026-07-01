@@ -50,9 +50,7 @@ app.get('/api/stations', async (req, res) => {
                   xmlns:xsd1="station.acme.com.xsd">
   <soapenv:Header/>
   <soapenv:Body>
-    <xsd1:getAllStations>
-      <stations>all</stations>
-    </xsd1:getAllStations>
+    <xsd1:getAllStations/>
   </soapenv:Body>
 </soapenv:Envelope>`;
 

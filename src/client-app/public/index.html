@@ -46,6 +46,17 @@
                         <button class="btn btn-light border rounded-pill text-secondary" onclick="app.refreshMap()">
                             <i class="bi bi-arrow-clockwise"></i> Aggiorna Mappa
                         </button>
+                        <!-- PRENOTAZIONE ATTIVA -->
+                        <div id="booking-info" class="d-none mt-1">
+                            <div class="alert alert-warning rounded-3 mb-2 py-2 text-start" role="alert">
+                                <i class="bi bi-calendar-check-fill"></i>
+                                <strong>Prenotato:</strong> <span id="booked-vehicle-id"></span>
+                                <br><small class="text-muted">Scansiona il QR del veicolo per ritirarlo</small>
+                            </div>
+                            <button class="btn btn-outline-danger rounded-pill w-100 btn-sm fw-bold mb-2" onclick="app.cancelBooking()">
+                                <i class="bi bi-x-circle"></i> Annulla Prenotazione
+                            </button>
+                        </div>
                         <button class="btn btn-link text-danger text-decoration-none btn-sm mt-2" onclick="app.logout()">
                             Esci dall'account
                         </button>
