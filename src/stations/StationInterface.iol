@@ -63,8 +63,7 @@ type StationInfo {
     vehicles*: VehicleInfo
 }
 
-type GetAllStationsRequest {
-   //stations: string
+type GetAllStationsRequest: any {
 }
 
 type GetAllStationsResponse {

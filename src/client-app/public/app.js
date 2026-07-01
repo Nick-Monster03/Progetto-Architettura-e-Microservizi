@@ -38,6 +38,11 @@ const app = {
                 this.currentProcessId = savedProcessId;
                 this.currentStationId = savedStationId || 's1';
                 this.updateUI('renting');
+            } else if (localStorage.getItem('acme_booking_id') && savedProcessId) { // ← AGGIUNGI
+                this.currentRentalId  = localStorage.getItem('acme_booking_id');
+                this.currentProcessId = savedProcessId;
+                this.currentStationId = savedStationId || 's1';
+                this.updateUI('logged'); // updateUI mostrerà booking-info automaticamente
             } else {
                 this.updateUI('logged');
             }
@@ -136,6 +141,10 @@ const app = {
         this.user             = null;
         this.currentProcessId = null;
         this.currentRentalId  = null;
+        localStorage.removeItem('acme_booking_id');
+        localStorage.removeItem('acme_process_id'); 
+        localStorage.removeItem('acme_station_id'); 
+        localStorage.removeItem('acme_rental_id');
         localStorage.removeItem('acme_user');
         this.updateUI('guest');
     },
@@ -151,6 +160,11 @@ const app = {
         } else if (state === 'logged') {
             document.getElementById('user-display').innerText = this.user;
             document.getElementById('logged-section').classList.remove('d-none');
+            const bookingId = localStorage.getItem('acme_booking_id');
+        if (bookingId) {
+            document.getElementById('booked-vehicle-id').innerText = bookingId;
+            document.getElementById('booking-info').classList.remove('d-none');
+        }
         } else if (state === 'renting') {
             document.getElementById('current-vehicle-id').innerText = this.currentRentalId;
             document.getElementById('renting-section').classList.remove('d-none');
@@ -330,7 +344,18 @@ const app = {
     /** Avvia processo BPMN di Noleggio Immediato */
     startRental: function (vehicleId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima!', 'warning');
-
+        if (this.currentProcessId && !localStorage.getItem('acme_rental_id')) {
+            if (vehicleId !== this.currentRentalId) {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'Hai una prenotazione attiva',
+                    html: `Puoi ritirare solo il veicolo <b>${this.currentRentalId}</b> che hai prenotato.`
+                });
+        }
+        // Veicolo corretto → conferma ritiro sul processo esistente
+        this._confirmPickup();
+        return;
+    }
         // Recupera la stazione del veicolo dall'ultima refreshMap
         const stationId = this.vehicleStationMap[vehicleId] || 's1';
         this.currentStationId = stationId;
@@ -411,6 +436,13 @@ const app = {
     prenota: function (vehicleId, stationId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima di prenotare!', 'warning');
 
+        if (this.currentRentalId) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Noleggio in corso',
+            text: 'Hai già un noleggio attivo. Terminalo prima di prenotare un altro veicolo.'
+            });
+        }
         // Imposta la stazione corretta ricevuta dal marker
         this.currentStationId = stationId || this.vehicleStationMap[vehicleId] || 's1';
 
@@ -448,7 +480,14 @@ const app = {
             .then(proc => {
                 this.currentProcessId = proc.id;
                 this.currentRentalId  = vehicleId;
+
+                localStorage.setItem('acme_booking_id', vehicleId);
+                localStorage.setItem('acme_process_id', proc.id);
+                localStorage.setItem('acme_station_id', this.currentStationId);
                 this.refreshMap();
+
+                document.getElementById('booked-vehicle-id').innerText = vehicleId;
+                document.getElementById('booking-info').classList.remove('d-none');
                 Swal.fire({
                     icon:  'success',
                     title: 'Prenotazione Confermata!',
@@ -463,6 +502,36 @@ const app = {
     },
 
     /** Annulla la prenotazione attiva */
+
+    _confirmPickup: function () {
+    Swal.fire({ title: 'Ritiro veicolo...', text: 'Sblocco il veicolo prenotato...', didOpen: () => Swal.showLoading() });
+
+    fetch(`${CAMUNDA_URL}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            messageName:       "Message_confirmPickup",
+            processInstanceId: this.currentProcessId
+        })
+    })
+    .then(r => {
+        if (!r.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
+        // Promuovi la prenotazione a noleggio effettivo
+        localStorage.removeItem('acme_booking_id');
+        localStorage.setItem('acme_rental_id',  this.currentRentalId);
+        localStorage.setItem('acme_process_id', this.currentProcessId);
+        localStorage.setItem('acme_station_id', this.currentStationId);
+        this.updateUI('renting');
+        this.refreshMap();
+        Swal.fire({
+            icon: 'success', title: 'Veicolo sbloccato!',
+            html: `Buon viaggio con <b>${this.currentRentalId}</b>!`,
+            timer: 2000, showConfirmButton: false
+        });
+    })
+    .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
+},
+
     cancelBooking: function () {
         if (!this.currentProcessId)
             return Swal.fire('Attenzione', 'Nessuna prenotazione attiva.', 'warning');
@@ -488,6 +557,10 @@ const app = {
                 if (!r.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
                 this.currentProcessId = null;
                 this.currentRentalId  = null;
+                localStorage.removeItem('acme_booking_id');
+                localStorage.removeItem('acme_process_id');
+                localStorage.removeItem('acme_station_id');
+                document.getElementById('booking-info').classList.add('d-none');
                 this.refreshMap();
                 Swal.fire({ icon: 'success', title: 'Prenotazione annullata' });
             })
