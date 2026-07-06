@@ -32,9 +32,9 @@ public class BankSoapClient {
 
         TransformInInterceptor transformInterceptor = new TransformInInterceptor();
         Map<String, String> transformMap = new HashMap<>();
-        transformMap.put("preAuthorizeResponse",  "{bank.acme.com.xsd}preAuthorizeResponse");
-        transformMap.put("commitPaymentResponse", "{bank.acme.com.xsd}commitPaymentResponse");
-        transformMap.put("commitPenaltyResponse", "{bank.acme.com.xsd}commitPenaltyResponse");
+        transformMap.put("preAuthorizeResponse",  "{http://bank.acme.mobility.wsdl.xsd}preAuthorizeResponse");
+        transformMap.put("commitPaymentResponse", "{http://bank.acme.mobility.wsdl.xsd}commitPaymentResponse");
+        transformMap.put("commitPenaltyResponse", "{http://bank.acme.mobility.wsdl.xsd}commitPenaltyResponse");
         transformInterceptor.setInTransformElements(transformMap);
         factory.getInInterceptors().add(transformInterceptor);
 
@@ -47,7 +47,7 @@ public class BankSoapClient {
     //             String cardNumber, Holder<Boolean> success,
     //             Holder<String> authToken, Holder<String> errorMessage,
     //             Holder<String> errorCode, Holder<Double> blockedAmount)
-    public PreAuthorizeResponse preAuthorize(String userId, double amount,
+    public PreAuthorizeResponse preAuthorize(String userId, String vehicleId, double amount,
                                               String cardNumber, boolean isReservation) {
         Holder<Boolean> success       = new Holder<>();
         Holder<String>  authToken     = new Holder<>();
@@ -55,7 +55,7 @@ public class BankSoapClient {
         Holder<String>  errorCode     = new Holder<>();
         Holder<Double>  blockedAmount = new Holder<>();
 
-        bankPort.preAuthorize(isReservation, amount, userId, cardNumber,
+        bankPort.preAuthorize(isReservation, amount, vehicleId, userId, cardNumber,
                               success, authToken, errorMessage, errorCode, blockedAmount);
 
         PreAuthorizeResponse resp = new PreAuthorizeResponse();

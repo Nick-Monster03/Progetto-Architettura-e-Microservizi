@@ -26,6 +26,7 @@ type GetStatusRequest {
 }
 
 type GetStatusResponse {
+    .success: bool
     .vehicleId: string
     .batteryLevel: int
     .latitude: double 

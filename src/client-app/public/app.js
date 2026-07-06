@@ -6,14 +6,14 @@ const app = {
     user:             null,
     markers:          {},   // vehicle circleMarkers (veicoli IN_USE, posizione real-time)
     stationMarkers:   {},   // station divIcon markers
-    vehicleStationMap:{},   // vehicleId → stationId (popolato da refreshMap)                                                               
+    vehicleStationMap:{},   // vehicleId → stationId (popolato da refreshMap)
+    vehicleStatusCache:{},  // vehicleId → status (popolato da refreshMap)
     currentRentalId:  null,
     currentProcessId: null,
     currentStationId: "s1",
 
     // ─── INIT ────────────────────────────────────────────────
     init: function () {
-        // Centro su Bari (dove sono le stazioni del seed)
         this.map = L.map('map', { zoomControl: false }).setView([41.1200, 16.8700], 15);
 
         L.control.zoom({ position: 'topright' }).addTo(this.map);
@@ -38,6 +38,11 @@ const app = {
                 this.currentProcessId = savedProcessId;
                 this.currentStationId = savedStationId || 's1';
                 this.updateUI('renting');
+            } else if (localStorage.getItem('acme_booking_id') && savedProcessId) {
+                this.currentRentalId  = localStorage.getItem('acme_booking_id');
+                this.currentProcessId = savedProcessId;
+                this.currentStationId = savedStationId || 's1';
+                this.updateUI('logged');
             } else {
                 this.updateUI('logged');
             }
@@ -137,6 +142,10 @@ const app = {
         this.currentProcessId = null;
         this.currentRentalId  = null;
         localStorage.removeItem('acme_user');
+        localStorage.removeItem('acme_booking_id');
+        localStorage.removeItem('acme_process_id');
+        localStorage.removeItem('acme_station_id');
+        localStorage.removeItem('acme_rental_id');
         this.updateUI('guest');
     },
 
@@ -145,12 +154,20 @@ const app = {
         document.getElementById('guest-section').classList.add('d-none');
         document.getElementById('logged-section').classList.add('d-none');
         document.getElementById('renting-section').classList.add('d-none');
+        const bi = document.getElementById('booking-info');
+        if (bi) bi.classList.add('d-none');
 
         if (state === 'guest') {
             document.getElementById('guest-section').classList.remove('d-none');
         } else if (state === 'logged') {
             document.getElementById('user-display').innerText = this.user;
             document.getElementById('logged-section').classList.remove('d-none');
+            // Ripristina banner prenotazione se presente
+            const bookingId = localStorage.getItem('acme_booking_id');
+            if (bookingId && bi) {
+                document.getElementById('booked-vehicle-id').innerText = bookingId;
+                bi.classList.remove('d-none');
+            }
         } else if (state === 'renting') {
             document.getElementById('current-vehicle-id').innerText = this.currentRentalId;
             document.getElementById('renting-section').classList.remove('d-none');
@@ -158,11 +175,6 @@ const app = {
     },
 
     // ─── MAPPA ──────────────────────────────────────────────
-
-    /**
-     * refreshMap: chiama /api/stations (proxy → StationService SOAP getAllStations)
-     * e per ogni veicolo IN_USE chiede la posizione real-time al Fleet Gateway.
-     */
     refreshMap: function () {
         fetch('/api/stations')
             .then(r => {
@@ -171,19 +183,19 @@ const app = {
             })
             .then(stations => {
                 const inUseIds = [];
+                this.vehicleStatusCache = {}; // reset cache ad ogni refresh
 
                 stations.forEach(station => {
                     this._updateStationMarker(station);
                     station.vehicles.forEach(v => {
-                        // Aggiorna mappa vehicleId → stationId
-                        this.vehicleStationMap[v.vehicleId] = station.stationId;
+                        this.vehicleStationMap[v.vehicleId]  = station.stationId;
+                        this.vehicleStatusCache[v.vehicleId] = v.status; // popola cache
                         if (v.status === 'IN_USE' || v.status === 'UNLOCKED') {
                             inUseIds.push(v.vehicleId);
                         }
                     });
                 });
 
-                // Ottieni posizione real-time dei veicoli in movimento
                 inUseIds.forEach(vid => {
                     fetch(`${GATEWAY_URL}/getStatus?vehicleId=${vid}`)
                         .then(r => r.ok ? r.json() : Promise.reject())
@@ -191,7 +203,6 @@ const app = {
                         .catch(() => console.log(`[refreshMap] ${vid} non tracciabile.`));
                 });
 
-                // Rimuovi marker di veicoli che non sono più in movimento
                 Object.keys(this.markers).forEach(vid => {
                     if (!inUseIds.includes(vid)) {
                         this.map.removeLayer(this.markers[vid]);
@@ -202,16 +213,10 @@ const app = {
             .catch(err => console.error('[refreshMap] Errore:', err));
     },
 
-    /**
-     * Disegna (o aggiorna) il marker di una stazione.
-     * Usa un divIcon stilizzato con il nome della stazione e un pallino
-     * verde/rosso che indica se ci sono veicoli disponibili.
-     */
     _updateStationMarker: function (station) {
         const availableCount = station.vehicles.filter(v => v.status === 'AVAILABLE').length;
         const dotColor       = availableCount > 0 ? '#2ecc71' : '#e74c3c';
 
-        // ── Contenuto del popup ───────────────────────────────────────────────
         const vehiclesHtml = station.vehicles.length === 0
             ? '<small class="text-muted">Nessun veicolo presente</small>'
             : station.vehicles.map(v => {
@@ -250,7 +255,6 @@ const app = {
                 ${vehiclesHtml}
             </div>`;
 
-        // ── Icona ────────────────────────────────────────────────────────────
         const iconHtml = `
             <div style="position:relative;display:inline-block">
                 <div style="background:#1a73e8;color:white;border-radius:8px;
@@ -278,18 +282,14 @@ const app = {
         }
     },
 
-    /**
-     * Disegna (o aggiorna) il marker circolare di un veicolo IN_USE.
-     * La posizione è real-time dal Fleet Gateway.
-     */
     _updateVehicleMarker: function (vehicleData) {
         if (!vehicleData) return;
         const lat = vehicleData.latitude;
         const lng = vehicleData.longitude;
         if (!lat || (lat === 0 && lng === 0)) return;
 
-        const vid    = vehicleData.vehicleId;
-        const popup  = `<div class="text-center p-1">
+        const vid   = vehicleData.vehicleId;
+        const popup = `<div class="text-center p-1">
                             <h6 class="fw-bold mb-1">🛴 ${vid}</h6>
                             <span class="badge bg-danger mb-2">IN USO</span><br>
                             <small>🔋 Batteria: <b>${vehicleData.batteryLevel}%</b></small>
@@ -309,8 +309,6 @@ const app = {
     },
 
     // ─── NOLEGGIO ────────────────────────────────────────────
-
-    /** Simula la scansione QR: l'utente digita l'ID del veicolo */
     scanQR: function () {
         Swal.fire({
             title: 'Inquadra il QR Code',
@@ -327,52 +325,126 @@ const app = {
         });
     },
 
-    /** Avvia processo BPMN di Noleggio Immediato */
     startRental: function (vehicleId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima!', 'warning');
 
-        // Recupera la stazione del veicolo dall'ultima refreshMap
+        // ── CHECK PRENOTAZIONE ATTIVA ─────────────────────────────
+        if (this.currentProcessId && !localStorage.getItem('acme_rental_id')) {
+            if (vehicleId !== this.currentRentalId) {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'Hai una prenotazione attiva',
+                    html: `Puoi ritirare solo il veicolo <b>${this.currentRentalId}</b> che hai prenotato.`
+                });
+            }
+            this._confirmPickup();
+            return;
+        }
+        // ── FINE CHECK PRENOTAZIONE ───────────────────────────────
+
+        // ── CHECK NOLEGGIO GIÀ ATTIVO ─────────────────────────────
+        if (this.currentRentalId) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Noleggio in corso',
+                text: 'Hai già un noleggio attivo. Terminalo prima di iniziarne uno nuovo.'
+            });
+        }
+        // ── FINE CHECK NOLEGGIO ───────────────────────────────────
+
         const stationId = this.vehicleStationMap[vehicleId] || 's1';
         this.currentStationId = stationId;
 
-        Swal.fire({ title: 'Avvio noleggio...', text: 'Contatto la banca per la pre-autorizzazione...', didOpen: () => Swal.showLoading() });
+        // ── CHECK REAL-TIME STATO VEICOLO ─────────────────────────
+        Swal.fire({ title: 'Verifica disponibilità...', didOpen: () => Swal.showLoading() });
 
-        fetch(`${CAMUNDA_URL}/process-definition/key/rental-process/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                variables: {
-                    userId:        { value: this.user,      type: "String"  },
-                    vehicleId:     { value: vehicleId,      type: "String"  },
-                    stationId:     { value: stationId,      type: "String"  },
-                    isRiservation: { value: false,          type: "Boolean" },
-                    rentalType:    { value: "immediate",    type: "String"  },
-                    card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
-                }
+        fetch(`/api/vehicle-status/${vehicleId}`)
+        .then(r => r.json())
+        .then(statusData => {
+            const liveStatus = statusData.status;
+
+            if (liveStatus === 'RESERVED') {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Veicolo prenotato',
+                    text: `Il veicolo ${vehicleId} è prenotato da un altro utente.`
+                });
+            }
+            if (liveStatus === 'IN_USE' || liveStatus === 'UNLOCKED') {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Veicolo in uso',
+                    text: `Il veicolo ${vehicleId} è attualmente in uso da un altro utente.`
+                });
+            }
+
+            // ── AVAILABLE: procedi con il noleggio ────────────────
+            Swal.fire({ title: 'Avvio noleggio...', text: 'Contatto la banca per la pre-autorizzazione...', didOpen: () => Swal.showLoading() });
+
+            fetch(`${CAMUNDA_URL}/process-definition/key/rental-process/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    variables: {
+                        userId:        { value: this.user,      type: "String"  },
+                        vehicleId:     { value: vehicleId,      type: "String"  },
+                        stationId:     { value: stationId,      type: "String"  },
+                        isRiservation: { value: false,          type: "Boolean" },
+                        rentalType:    { value: "immediate",    type: "String"  },
+                        card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
+                    }
+                })
             })
+            .then(r => {
+                if (!r.ok) throw new Error("Camunda non raggiungibile (status " + r.status + ")");
+                return r.json();
+            })
+            .then(proc => {
+                this.currentProcessId = proc.id;
+                this.currentRentalId  = vehicleId;
+                localStorage.setItem('acme_rental_id',  vehicleId);
+                localStorage.setItem('acme_process_id', proc.id);
+                localStorage.setItem('acme_station_id', this.currentStationId);
+                this.updateUI('renting');
+                this.refreshMap();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Noleggio avviato!',
+                    html: `🛴 Buon viaggio!<br><small class="text-muted">Process ID: ${proc.id}</small>`
+                });
+
+                // ── POLLING: verifica che il processo non sia fallito ─
+                setTimeout(() => {
+                    fetch(`${CAMUNDA_URL}/process-instance/${proc.id}`)
+                    .then(r => {
+                        if (r.status === 404) {
+                            this.currentProcessId = null;
+                            this.currentRentalId  = null;
+                            localStorage.removeItem('acme_rental_id');
+                            localStorage.removeItem('acme_process_id');
+                            localStorage.removeItem('acme_station_id');
+                            this.updateUI('logged');
+                            this.refreshMap();
+                            Swal.fire({
+                                icon:  'error',
+                                title: 'Pagamento rifiutato',
+                                text:  'Pre-autorizzazione bancaria fallita. Verifica il saldo disponibile.'
+                            });
+                        }
+                    })
+                    .catch(() => {});
+                }, 5000);
+                // ── FINE POLLING ──────────────────────────────────
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
         })
-        .then(r => {
-            if (!r.ok) throw new Error("Camunda non raggiungibile (status " + r.status + ")");
-            return r.json();
-        })
-        .then(proc => {
-            this.currentProcessId = proc.id;
-            this.currentRentalId  = vehicleId;
-            localStorage.setItem('acme_rental_id',  vehicleId);
-            localStorage.setItem('acme_process_id', proc.id);
-            localStorage.setItem('acme_station_id', this.currentStationId);
-            this.updateUI('renting');
-            this.refreshMap();
-            Swal.fire({
-                icon: 'success',
-                title: 'Noleggio avviato!',
-                html: `🛴 Buon viaggio!<br><small class="text-muted">Process ID: ${proc.id}</small>`
-            });
-        })
-        .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
+        .catch(() => {
+            // Se il check real-time fallisce, procedi comunque
+            Swal.fire({ icon: 'warning', title: 'Attenzione', text: 'Impossibile verificare la disponibilità. Tentativo in corso...' });
+        });
+        // ── FINE CHECK REAL-TIME ──────────────────────────────────
     },
 
-    /** Termina il noleggio: invia Message_endRental a Camunda */
     stopRental: function () {
         if (!this.currentRentalId) return;
 
@@ -404,14 +476,17 @@ const app = {
         .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
     },
 
-    /**
-     * Avvia processo BPMN di Prenotazione Breve.
-     * stationId viene passato dal pulsante nel popup della stazione.
-     */
     prenota: function (vehicleId, stationId) {
         if (!this.user) return Swal.fire('Attenzione', 'Devi fare il login prima di prenotare!', 'warning');
 
-        // Imposta la stazione corretta ricevuta dal marker
+        if (this.currentRentalId) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Noleggio in corso',
+                text: 'Hai già un noleggio attivo. Terminalo prima di prenotare un altro veicolo.'
+            });
+        }
+
         this.currentStationId = stationId || this.vehicleStationMap[vehicleId] || 's1';
 
         Swal.fire({
@@ -436,7 +511,7 @@ const app = {
                         vehicleId:     { value: vehicleId,              type: "String"  },
                         stationId:     { value: this.currentStationId,  type: "String"  },
                         isRiservation: { value: true,                   type: "Boolean" },
-                        rentalType:    { value: "reserve",          type: "String"  },
+                        rentalType:    { value: "reserve",              type: "String"  },
                         card_number:   { value: "CARD-" + this.user.toUpperCase(), type: "String" }
                     }
                 })
@@ -448,7 +523,12 @@ const app = {
             .then(proc => {
                 this.currentProcessId = proc.id;
                 this.currentRentalId  = vehicleId;
+                localStorage.setItem('acme_booking_id', vehicleId);
+                localStorage.setItem('acme_process_id', proc.id);
+                localStorage.setItem('acme_station_id', this.currentStationId);
                 this.refreshMap();
+                document.getElementById('booked-vehicle-id').innerText = vehicleId;
+                document.getElementById('booking-info').classList.remove('d-none');
                 Swal.fire({
                     icon:  'success',
                     title: 'Prenotazione Confermata!',
@@ -462,7 +542,36 @@ const app = {
         });
     },
 
-    /** Annulla la prenotazione attiva */
+    _confirmPickup: function () {
+        Swal.fire({ title: 'Ritiro veicolo...', text: 'Sblocco il veicolo prenotato...', didOpen: () => Swal.showLoading() });
+
+        fetch(`${CAMUNDA_URL}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messageName:       "Message_confirmPickup",
+                processInstanceId: this.currentProcessId
+            })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
+            localStorage.removeItem('acme_booking_id');
+            localStorage.setItem('acme_rental_id',  this.currentRentalId);
+            localStorage.setItem('acme_process_id', this.currentProcessId);
+            localStorage.setItem('acme_station_id', this.currentStationId);
+            const bi = document.getElementById('booking-info');
+            if (bi) bi.classList.add('d-none');
+            this.updateUI('renting');
+            this.refreshMap();
+            Swal.fire({
+                icon: 'success', title: 'Veicolo sbloccato!',
+                html: `Buon viaggio con <b>${this.currentRentalId}</b>!`,
+                timer: 2000, showConfirmButton: false
+            });
+        })
+        .catch(err => Swal.fire({ icon: 'error', title: 'Errore', text: err.message }));
+    },
+
     cancelBooking: function () {
         if (!this.currentProcessId)
             return Swal.fire('Attenzione', 'Nessuna prenotazione attiva.', 'warning');
@@ -471,8 +580,8 @@ const app = {
             title: 'Annullare la prenotazione?',
             icon:  'warning',
             showCancelButton: true,
-            confirmButtonText:'Sì, annulla',
-            cancelButtonText: 'No'
+            confirmButtonText: 'Sì, annulla',
+            cancelButtonText:  'No'
         }).then(result => {
             if (!result.isConfirmed) return;
 
@@ -488,6 +597,11 @@ const app = {
                 if (!r.ok) throw new Error("Errore nell'invio del messaggio a Camunda");
                 this.currentProcessId = null;
                 this.currentRentalId  = null;
+                localStorage.removeItem('acme_booking_id');
+                localStorage.removeItem('acme_process_id');
+                localStorage.removeItem('acme_station_id');
+                const bi = document.getElementById('booking-info');
+                if (bi) bi.classList.add('d-none');
                 this.refreshMap();
                 Swal.fire({ icon: 'success', title: 'Prenotazione annullata' });
             })

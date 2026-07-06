@@ -20,11 +20,6 @@ type UpdateLocationRequest {
     .location: LocationType
 }
 
-type SetStatusRequest {
-    .vehicleId: string
-    .status: string
-}
-
 type GetInfoRequest {
     .vehicleId: string
 }
@@ -32,7 +27,6 @@ type GetInfoRequest {
 
 interface TrackingInterface {
     RequestResponse:
-        setStatus( SetStatusRequest )( void ),
         getInfo( GetInfoRequest )( VehicleInfo ),
         updateLocation( UpdateLocationRequest )( void ),
         getVehicleList( void )( VehicleList )

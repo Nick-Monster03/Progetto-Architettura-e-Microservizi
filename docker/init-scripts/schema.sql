@@ -101,6 +101,7 @@ INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) VALUES
 CREATE TABLE authorizations (
     auth_token VARCHAR(100) PRIMARY KEY,
     user_id VARCHAR(50) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    vehicle_id VARCHAR(50) NOT NULL REFERENCES vehicles(vehicle_id) ON DELETE CASCADE,
     is_reservation BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP,
@@ -112,6 +113,7 @@ COMMENT ON TABLE authorizations IS 'Token di pre-autorizzazione bancaria';
 COMMENT ON COLUMN authorizations.auth_token IS 'Token univoco generato dalla banca';
 
 CREATE INDEX idx_auth_user ON authorizations(user_id);
+CREATE INDEX idx_auth_vehicles ON authorizations(vehicle_id);
 CREATE INDEX idx_auth_created ON authorizations(created_at);
 
 -- ============================================

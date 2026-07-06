@@ -71,6 +71,29 @@
                 ]
             }
         },
+        "/preflight": {
+            "post": {
+                "produces": [
+                    "application\/json"
+                ],
+                "description": "",
+                "operationId": "preflight",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "resource not found"
+                    }
+                },
+                "tags": [
+                    "FleetInterface"
+                ],
+                "consumes": [
+                    "application\/json"
+                ]
+            }
+        },
         "/startTracking": {
             "post": {
                 "produces": [
@@ -108,7 +131,7 @@
             }
         }
     },
-    "host": "fleet-gateway:8082",
+    "host": "socket:\/\/0.0.0.0:8082",
     "definitions": {
         "StartTrackingResponse": {
             "type": "object",
@@ -132,6 +155,9 @@
         "GetStatusResponse": {
             "type": "object",
             "properties": {
+                "success": {
+                    "type": "boolean"
+                },
                 "latitude": {
                     "format": "double",
                     "type": "number"

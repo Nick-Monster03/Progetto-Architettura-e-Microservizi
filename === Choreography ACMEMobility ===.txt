@@ -1,65 +1,36 @@
 === Choreography ACMEMobility ===
 
 (
-    /* --- RAMO 1: NOLEGGIO IMMEDIATO (Scenario A e A1) --- */
     startRental:User -> ACME ;
-    
-    /* ACME controlla disponibilità interna. 
-       Se OK, chiede i soldi. */
     preAuthorize:ACME -> Bank ;
-    
     (
-        /* CASO 1: Banca KO (Fondi insufficienti) */
         insufficientFunds:Bank -> ACME ;
         rentalFailed:ACME -> User
         +
-        
-        /* CASO 2: Banca OK */
         authToken:Bank -> ACME ;
-        
-        /* Tentativo sblocco stazione */
         unlock:ACME -> Station ;
-        
         (
-            /* CASO 2.1: Stazione Guasta (Hardware Error) - COMPENSAZIONE */
             unlockFail:Station -> ACME ;
-            /* Devo sbloccare i soldi bloccati */
-            cancelAuth:ACME -> Bank ; 
+            cancelAuth:ACME -> Bank ;
             rentalFailed:ACME -> User
-            
             +
-            
-            /* CASO 2.2: Stazione OK - INIZIO NOLEGGIO */
             unlockAck:Station -> ACME ;
-            
-            /* Avvio tracking (Parallelismo o sequenza? Meglio sequenza per sicurezza connectedness) */
             startTracking:ACME -> Fleet ;
             trackingAck:Fleet -> ACME ;
-            
             rentalStarted:ACME -> User ;
-            
-            /* Loop di monitoraggio durante il viaggio */
-            ( 
-                getStatus:ACME -> Fleet ; 
-                statusReport:Fleet -> ACME 
-            )* ;
-            
-            /* CHIUSURA NOLEGGIO */
+            ( getStatus:ACME -> Fleet ; statusReport:Fleet -> ACME )* ;
             endRental:User -> ACME ;
+            stopTracking:ACME -> Fleet ;
+            tripReport:Fleet -> ACME ;
             lock:ACME -> Station ;
             lockAck:Station -> ACME ;
-            
-            stopTracking:ACME -> Fleet ;
-            tripReport:Fleet -> ACME ; /* Contiene km e batteria */
-            
-            /* Pagamento Finale */
+            calculateCost:ACME -> Calculator ;
+            costReport:Calculator -> ACME ;
             commitPayment:ACME -> Bank ;
             (
-                /* Pagamento OK */
                 paymentReceipt:Bank -> ACME ;
                 invoice:ACME -> User
                 +
-                /* Pagamento Fallito (Insolvenza) */
                 paymentFailed:Bank -> ACME ;
                 paymentSollecit:ACME -> User
             )
@@ -68,77 +39,67 @@
 
     +
 
-    /* --- RAMO 2: PRENOTAZIONE (Scenario B) --- */
     reserve:User -> ACME ;
     preAuthorize:ACME -> Bank ;
-    
     (
-        /* Prenotazione fallita (Banca KO) */
         insufficientFunds:Bank -> ACME ;
         reservationFailed:ACME -> User
-        
         +
-        
-        /* Prenotazione OK */
         authToken:Bank -> ACME ;
-        reservationConfirmed:ACME -> User ;
-        
-        /* Qui l'utente può cancellare o confermare il ritiro */
+        reserve:ACME -> Station ;
         (
-            /* B3: Cancellazione Utente */
-            cancelReservation:User -> ACME ;
+            reserveFail:Station -> ACME ;
             cancelAuth:ACME -> Bank ;
-            cancellationConfirmed:ACME -> User
-            
+            reservationFailed:ACME -> User
             +
-            
-            /* B2: Il timeout nel caso di scadenza dei 25 è gestito internamente */
-            timeoutExpired:Timer -> ACME ;
-            commitPenalty:ACME -> Bank ;
-            penaltyReceipt:Bank -> ACME ;
-            penaltyNotification:ACME -> User
-            
-            +
-            
-            /* B1: Ritiro Veicolo (Pickup) */
-            confirmPickup:User -> ACME ;
-            unlock:ACME -> Station ;
-            
+            reserveAck:Station -> ACME ;
+            reservationConfirmed:ACME -> User ;
             (
-                /* Stazione KO */
-                unlockFail:Station -> ACME ;
+                cancelReservation:User -> ACME ;
                 cancelAuth:ACME -> Bank ;
-                rentalFailed:ACME -> User
-                
+                cancelReservation:ACME -> Station ;
+                cancelReservationAck:Station -> ACME ;
+                (
+                    cancellationConfirmed:ACME -> User
+                    +
+                    penaltyNotification:ACME -> User
+                )
                 +
-                
-                /* Stazione OK - Si riconduce al flusso di noleggio standard */
-                unlockAck:Station -> ACME ;
-                startTracking:ACME -> Fleet ;
-                trackingAck:Fleet -> ACME ;
-                rentalStarted:ACME -> User ;
-                
-                /* Loop monitoraggio */
-                ( getStatus:ACME -> Fleet ; statusReport:Fleet -> ACME )* ;
-                
-                /* Chiusura  */
-                endRental:User -> ACME ;
-                lock:ACME -> Station ;
-                lockAck:Station -> ACME ;
-                stopTracking:ACME -> Fleet ;
-                tripReport:Fleet -> ACME ; /* Contiene km e batteria */
-            
-            	/* Pagamento Finale */
-            	commitPayment:ACME -> Bank ;
-            	(
-                	/* Pagamento OK */
-                	paymentReceipt:Bank -> ACME ;
-                	invoice:ACME -> User
-                	+
-                	/* Pagamento Fallito (Insolvenza) */
-                	paymentFailed:Bank -> ACME ;
-                	paymentSollecit:ACME -> User
-            	)
+                timeoutExpired:Timer -> ACME ;
+                commitPenalty:ACME -> Bank ;
+                penaltyReceipt:Bank -> ACME ;
+                cancelReservation:ACME -> Station ;
+                cancelReservationAck:Station -> ACME ;
+                penaltyNotification:ACME -> User
+                +
+                confirmPickup:User -> ACME ;
+                unlock:ACME -> Station ;
+                (
+                    unlockFail:Station -> ACME ;
+                    cancelAuth:ACME -> Bank ;
+                    rentalFailed:ACME -> User
+                    +
+                    unlockAck:Station -> ACME ;
+                    startTracking:ACME -> Fleet ;
+                    trackingAck:Fleet -> ACME ;
+                    rentalStarted:ACME -> User ;
+                    ( getStatus:ACME -> Fleet ; statusReport:Fleet -> ACME )* ;
+                    endRental:User -> ACME ;
+                    stopTracking:ACME -> Fleet ;
+                    tripReport:Fleet -> ACME ;
+                    lock:ACME -> Station ;
+                    lockAck:Station -> ACME ;
+                    calculateCost:ACME -> Calculator ;
+                    costReport:Calculator -> ACME ;
+                    commitPayment:ACME -> Bank ;
+                    (
+                        paymentReceipt:Bank -> ACME ;
+                        invoice:ACME -> User
+                        +
+                        paymentFailed:Bank -> ACME ;
+                        paymentSollecit:ACME -> User
+                    )
+                )
             )
         )
     )

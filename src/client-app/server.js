@@ -44,15 +44,12 @@ app.post('/api/registerUser', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 app.get('/api/stations', async (req, res) => {
 
-    // Envelope SOAP per l'operazione getAllStations
     const soapEnvelope = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:xsd1="station.acme.com.xsd">
   <soapenv:Header/>
   <soapenv:Body>
-    <xsd1:getAllStations>
-      <stations>all</stations>
-    </xsd1:getAllStations>
+    <xsd1:getAllStations/>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
@@ -72,7 +69,6 @@ app.get('/api/stations', async (req, res) => {
 
         const xmlText = await soapResp.text();
 
-        // Parsifica l'XML SOAP → oggetto JS
         const parsed = await xml2js.parseStringPromise(xmlText, {
             explicitArray:       false,
             tagNameProcessors:   [xml2js.processors.stripPrefix],
@@ -85,8 +81,6 @@ app.get('/api/stations', async (req, res) => {
         const getAllStationsResp = body.getAllStationsResponse;
         if (!getAllStationsResp) throw new Error('getAllStationsResponse assente nel Body');
 
-        // Jolie serializza il campo come "stations" (nome del campo nel tipo .iol);
-        // fallback a "request" per compatibilità con vecchie versioni del WSDL
         let rawStations = getAllStationsResp.stations || getAllStationsResp.request;
         if (!rawStations) rawStations = [];
         if (!Array.isArray(rawStations)) rawStations = [rawStations];
@@ -115,6 +109,29 @@ app.get('/api/stations', async (req, res) => {
     } catch (err) {
         console.error('[/api/stations] Errore:', err.message);
         res.status(500).json({ error: 'StationService non raggiungibile.', detail: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+//  Proxy → Fleet Gateway: stato real-time di un singolo veicolo
+//  Usato da startRental per verificare disponibilità prima di
+//  avviare il processo BPMN su Camunda
+// ─────────────────────────────────────────────────────────────
+app.get('/api/vehicle-status/:vehicleId', async (req, res) => {
+    try {
+        const response = await fetch(
+            `http://fleet-gateway:8082/getStatus?vehicleId=${req.params.vehicleId}`
+        );
+        if (!response.ok) throw new Error('Fleet Gateway non raggiungibile');
+        const data = await response.json();
+        res.json({
+            vehicleId: req.params.vehicleId,
+            status:    data.status  || 'UNKNOWN',
+            success:   data.success || false
+        });
+    } catch (err) {
+        console.error('[/api/vehicle-status] Errore:', err.message);
+        res.status(500).json({ error: err.message, status: 'UNKNOWN' });
     }
 });
 

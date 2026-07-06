@@ -16,18 +16,18 @@ service TrackingService {
     }
 
     init {
-    with (connectionInfo) {
-        .username = "camunda";
-        .password = "camunda";
-        .port = 5432;          // porta interna Docker
-        .host = "postgres";    // nome servizio nel docker-compose 
-        .database = "camunda"; // il DB 
-        .driver = "postgresql"
-    };
-    connect@Database(connectionInfo)();
-    println@Console("Tracking Service avviato (SOAP port 8084)")();
-    println@Console("Connected to camunda")()
-}
+        with (connectionInfo) {
+            .username = "camunda";
+            .password = "camunda";
+            .port = 5432;
+            .host = "postgres";
+            .database = "camunda";
+            .driver = "postgresql"
+        };
+        connect@Database(connectionInfo)();
+        println@Console("Tracking Service avviato (SOAP port 8084)")();
+        println@Console("Connected to camunda")()
+    }
 
     main {
 
@@ -37,14 +37,12 @@ service TrackingService {
                 newLat = double(request.location.latitude);
                 newLon = double(request.location.longitude);
 
-                // Leggi posizione precedente da tracking_veichle
                 query@Database(
                     "SELECT latitude, longitude FROM tracking_veichle " +
                     "WHERE vehicle_id = '" + vid + "' ORDER BY id DESC LIMIT 1"
                 )(posRes);
 
                 if (#posRes.row == 0) {
-                    // Veicolo non ancora in tracking → inserisci primo record
                     update@Database(
                         "INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) " +
                         "VALUES ('" + vid + "', " + newLat + ", " + newLon + ")"
@@ -57,20 +55,17 @@ service TrackingService {
                     oldLat = double(posRes.row[0].latitude);
                     oldLon = double(posRes.row[0].longitude);
 
-                    // Calcolo distanza (approssimazione euclidea)
                     dLat = newLat - oldLat;
                     dLon = newLon - oldLon;
                     if (dLat < 0.0) { dLat = dLat * -1.0 };
                     if (dLon < 0.0) { dLon = dLon * -1.0 };
                     distKm = (dLat + dLon) * 111.0;
 
-                    // Inserisci nuova posizione in tracking_veichle
                     update@Database(
                         "INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) " +
                         "VALUES ('" + vid + "', " + newLat + ", " + newLon + ")"
                     )(ir);
 
-                    // Aggiorna total_km in vehicles
                     query@Database(
                         "SELECT total_km FROM vehicles WHERE vehicle_id = '" + vid + "'"
                     )(kmRes);
@@ -95,28 +90,25 @@ service TrackingService {
             vid = request.vehicleId;
             synchronized(trackingLock) {
 
-                // Leggi status e total_km da vehicles
                 query@Database(
                     "SELECT status, total_km FROM vehicles WHERE vehicle_id = '" + vid + "'"
                 )(vRes);
 
-                // Leggi ultima posizione da tracking_veichle
                 query@Database(
                     "SELECT latitude, longitude FROM tracking_veichle " +
                     "WHERE vehicle_id = '" + vid + "' ORDER BY id DESC LIMIT 1"
                 )(posRes);
 
+                response.vehicleId = vid;
+
                 if (#vRes.row == 0) {
-                    println@Console("Richiesta getInfo per veicolo sconosciuto: " + vid)();
-                    response.vehicleId           = vid;
-                    response.status              = "UNKNOWN";
-                    response.totalKm             = 0.0;
-                    response.location.latitude   = 0.0;
-                    response.location.longitude  = 0.0
+                    println@Console("ATTENZIONE: getInfo per veicolo inesistente: " + vid)();
+                    response.totalKm            = 0.0;
+                    response.location.latitude  = 0.0;
+                    response.location.longitude = 0.0
                 } else {
-                    response.vehicleId  = vid;
-                    response.status     = vRes.row[0].status;
-                    response.totalKm    = double(vRes.row[0].total_km);
+                    response.status  = vRes.row[0].status;
+                    response.totalKm = double(vRes.row[0].total_km);
 
                     if (#posRes.row == 1) {
                         response.location.latitude  = double(posRes.row[0].latitude);
@@ -129,20 +121,9 @@ service TrackingService {
             }
         } ]
 
-        [ setStatus(request)(response) {
-            synchronized(trackingLock) {
-                update@Database(
-                    "UPDATE vehicles SET status = '" + request.status + "', last_updated = CURRENT_TIMESTAMP " +
-                    "WHERE vehicle_id = '" + request.vehicleId + "'"
-                )(ur);
-                println@Console("setStatus: " + request.vehicleId + " → " + request.status)()
-            }
-        } ]
-
         [ getVehicleList(request)(response) {
             synchronized(trackingLock) {
 
-                // Leggi tutti i veicoli
                 query@Database(
                     "SELECT v.vehicle_id, v.status, v.total_km, " +
                     "t.latitude, t.longitude " +
@@ -153,9 +134,9 @@ service TrackingService {
 
                 for (i = 0, i < #vRes.row, i++) {
                     row -> vRes.row[i];
-                    response.vehicles[i].vehicleId          = row.vehicle_id;
-                    response.vehicles[i].status             = row.status;
-                    response.vehicles[i].totalKm            = double(row.total_km);
+                    response.vehicles[i].vehicleId = row.vehicle_id;
+                    response.vehicles[i].status    = row.status;
+                    response.vehicles[i].totalKm   = double(row.total_km);
 
                     if (is_defined(row.latitude)) {
                         response.vehicles[i].location.latitude  = double(row.latitude);

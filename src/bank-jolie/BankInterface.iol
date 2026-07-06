@@ -1,6 +1,7 @@
 type PreAuthorizeRequest {
     .userId: string
     .amount: double      // Importo da bloccare (es. 10.00 EUR per cauzione)
+    .vehicleId: string
     .cardNumber: string
     .isRiservation:bool
 }

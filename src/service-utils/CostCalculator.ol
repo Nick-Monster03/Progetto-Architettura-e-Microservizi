@@ -49,7 +49,7 @@ service CostCalculator {
             batteryPenalty = 0.0;
             if( battery < global.rates.batteryThreshold ) {
                 batteryPenalty = subtotal * global.rates.penaltyPercentage;
-                println@Console( "[CALCULATOR]   ⚠️  LOW BATTERY PENALTY: " + battery + "% < 15%" )()
+                println@Console( "[CALCULATOR] LOW BATTERY PENALTY: " + battery + "% < 15%" )()
             };
             
             latePenalty = 0.0;

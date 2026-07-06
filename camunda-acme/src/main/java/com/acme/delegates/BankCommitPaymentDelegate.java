@@ -42,7 +42,7 @@ public class BankCommitPaymentDelegate implements JavaDelegate {
                 duration != null ? duration : 0,
                 kilometers != null ? kilometers : 0.0,
                 finalBattery != null ? finalBattery : 0,
-                totalPenalty
+                totalPenalty != null ? totalPenalty : 0.0
             );
             
             boolean success = response.isSuccess();
@@ -62,7 +62,6 @@ public class BankCommitPaymentDelegate implements JavaDelegate {
             log.error("Error calling Bank.commitPayment", e);
             execution.setVariable("paymentSuccess", false);
             execution.setVariable("paymentErrorMessage", "Bank offline");
-            throw e;
         }
     }
 }

@@ -16,18 +16,16 @@ import java.util.Map;
 public class FleetStopTrackingDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(FleetStopTrackingDelegate.class);
-    //private static final String FLEET_URL = "http://127.0.0.1:8082/stopTracking";
     private static final String FLEET_URL = "http://fleet-gateway:8082/stopTracking";
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
-        
+
         String userId = (String) execution.getVariable("userId");
         String vehicleId = (String) execution.getVariable("vehicleId");
-        
+
         log.info("=== [FLEET STOP] User: {} | Vehicle: {} ===", userId, vehicleId);
 
-        // Costruisci richiesta JSON
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("userId", userId);
         requestBody.put("vehicleId", vehicleId);
@@ -37,31 +35,37 @@ public class FleetStopTrackingDelegate implements JavaDelegate {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, String>> request = new HttpEntity<>(requestBody, headers);
 
+        ResponseEntity<String> response;
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(FLEET_URL, request, String.class);
-            String responseBody = response.getBody();
-            
-            // Parse JSON response
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode json = mapper.readTree(responseBody);
-            
-            Double kilometers = json.get("kilometers").asDouble();
-            Integer finalBattery = json.get("finalBattery").asInt();
-            
-            // Calcola durata in minuti
-            Long startTime = (Long) execution.getVariable("rentalStartTime");
-            long durationMillis = System.currentTimeMillis() - startTime;
-            int durationMinutes = (int) (durationMillis / 60000);
-            
-            // Salva per Calculator
-            execution.setVariable("kilometers", kilometers);
-            execution.setVariable("finalBattery", finalBattery);
-            execution.setVariable("duration", durationMinutes);
-            
-            log.info(" Tracking stopped - Km: {} | Battery: {}% | Duration: {}min", kilometers, finalBattery, durationMinutes);
-            
+            response = restTemplate.postForEntity(FLEET_URL, request, String.class);
         } catch (Exception e) {
-            log.error(" Fleet Service unreachable", e);
+            log.error("FleetGateway irraggiungibile durante stopTracking", e);
+            throw e;
         }
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree(response.getBody());
+        boolean success = json.path("success").asBoolean(false);
+
+        if (!success) {
+            String message = json.path("message").asText("Fleet ha rifiutato stopTracking senza un messaggio");
+            log.error("stopTracking fallito per vehicle {}: {}", vehicleId, message);
+            throw new IllegalStateException("stopTracking fallito: " + message);
+        }
+
+        Double kilometers = json.path("kilometers").asDouble(0.0);
+        Integer finalBattery = json.path("finalBattery").asInt(0);
+
+        Long startTime = (Long) execution.getVariable("rentalStartTime");
+        if (startTime == null) {
+            log.warn("rentalStartTime assente per vehicle {}: durata calcolata come 0", vehicleId);
+        }
+        int durationMinutes = (startTime != null) ? (int) ((System.currentTimeMillis() - startTime) / 60000) : 0;
+
+        execution.setVariable("kilometers", kilometers);
+        execution.setVariable("finalBattery", finalBattery);
+        execution.setVariable("duration", durationMinutes);
+
+        log.info("Tracking stopped - Km: {} | Battery: {}% | Duration: {}min", kilometers, finalBattery, durationMinutes);
     }
 }
