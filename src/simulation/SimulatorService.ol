@@ -64,11 +64,12 @@ service SimulatorService {
                         println@Console("[SIM] Dati attuali -> KM: " + info.totalKm + ", Bat: " + batResp.level + "%")();
                         
                         newLat = info.location.latitude + 0.001;
+                        newLng = info.location.longitude + 0.001;
                         updateLocationRequest.vehicleId = vid;
                         updateLocationRequest.location.latitude = double( newLat );
-                        updateLocationRequest.location.longitude = double( info.location.longitude );
+                        updateLocationRequest.location.longitude = double( newLng );
                         updateLocation@TrackingClient( updateLocationRequest )();
-                        
+
                         if ( batResp.level > 0 ) {
                             newBat = batResp.level - 1;
                             
