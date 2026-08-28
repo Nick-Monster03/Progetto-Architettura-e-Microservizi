@@ -4,7 +4,8 @@
 CREATE TABLE users (
     user_id VARCHAR(50) PRIMARY KEY,
     password VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_access TIMESTAMP NULL
 );
 
 COMMENT ON TABLE users IS 'Utenti del sistema';
@@ -53,7 +54,11 @@ COMMENT ON COLUMN stations.station_id IS 'Identificativo univoco stazione';
 INSERT INTO stations (station_id, name, latitude, longitude) VALUES
 ('station1', 'Bari Centro', 41.1171, 16.8719),
 ('station2', 'Bari Porto', 41.1222, 16.8715),
-('station3', 'Bari Università', 41.1200, 16.8700);
+('station3', 'Bari Università', 41.1200, 16.8700),
+('station4', 'Bari Fiera del Levante', 41.1069, 16.8788),
+('station5', 'Bari San Paolo', 41.1204, 16.7975),
+('station6', 'Bari Japigia', 41.1004, 16.8624),
+('station7', 'Bari Libertà', 41.1174, 16.8543);
 
 
 -- ============================================
@@ -77,7 +82,11 @@ COMMENT ON COLUMN vehicles.battery_level IS 'Livello batteria in percentuale (0-
 INSERT INTO vehicles (vehicle_id, station_id, status, battery_level) VALUES
 ('car1', 'station1', 'AVAILABLE', 76),
 ('car2', 'station2', 'AVAILABLE', 80),
-('car3', 'station3', 'AVAILABLE', 100);
+('car3', 'station3', 'AVAILABLE', 100),
+('car4', 'station4', 'AVAILABLE', 90),
+('car5', 'station5', 'AVAILABLE', 65),
+('car6', 'station6', 'AVAILABLE', 40),
+('car7', 'station7', 'AVAILABLE', 12);
 
 -- ============================================
 -- TABLE: tracking_veichle
@@ -93,7 +102,11 @@ CREATE TABLE tracking_veichle(
 INSERT INTO tracking_veichle (vehicle_id, latitude, longitude) VALUES
 ('car1', 41.1171, 16.8719),
 ('car2', 41.1222, 16.8715),
-('car3', 41.1200, 16.8700);
+('car3', 41.1200, 16.8700),
+('car4', 41.1069, 16.8788),
+('car5', 41.1204, 16.7975),
+('car6', 41.1004, 16.8624),
+('car7', 41.1174, 16.8543);
 
 -- ============================================
 -- TABLE: authorizations (Pre-autorizzazioni bancarie)

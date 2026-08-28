@@ -138,15 +138,34 @@ const app = {
     },
 
     logout: function () {
-        this.user             = null;
-        this.currentProcessId = null;
-        this.currentRentalId  = null;
-        localStorage.removeItem('acme_user');
-        localStorage.removeItem('acme_booking_id');
-        localStorage.removeItem('acme_process_id');
-        localStorage.removeItem('acme_station_id');
-        localStorage.removeItem('acme_rental_id');
-        this.updateUI('guest');
+        if (!this.user) return;
+
+        Swal.fire({ title: 'Disconnessione in corso...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        fetch('/api/logoutUser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: this.user })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                this.user             = null;
+                this.currentProcessId = null;
+                this.currentRentalId  = null;
+                localStorage.removeItem('acme_user');
+                localStorage.removeItem('acme_booking_id');
+                localStorage.removeItem('acme_process_id');
+                localStorage.removeItem('acme_station_id');
+                localStorage.removeItem('acme_rental_id');
+                this.updateUI('guest');
+                Swal.fire({ icon: 'success', title: 'Disconnesso', text: res.message,
+                            timer: 1500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Logout non riuscito', text: res.message });
+            }
+        })
+        .catch(() => Swal.fire({ icon: 'error', title: 'Errore', text: 'Impossibile contattare UserService.' }));
     },
 
     // ─── UI ─────────────────────────────────────────────────

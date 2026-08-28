@@ -16,6 +16,9 @@ inputPort UserPort {
         .osc.preflightRegister.alias = "registerUser";
         .osc.preflightLogin.method = "options";
         .osc.preflightLogin.alias = "loginUser";
+        .osc.logoutUser.method = "post";
+        .osc.preflightLogout.method = "options";
+        .osc.preflightLogout.alias = "logoutUser";
         .response.headers.("Access-Control-Allow-Origin") = "*";
         .response.headers.("Access-Control-Allow-Methods") = "POST, OPTIONS";
         .response.headers.("Access-Control-Allow-Headers") = "Content-Type"
@@ -50,6 +53,10 @@ main {
 
     [ preflight( request )( response ) {
         println@Console("[USER] CORS Preflight generico approvato")()
+    } ]
+
+    [ preflightLogout( request )( response ) {
+        println@Console("[USER] CORS Preflight Logout approvato")()
     } ]
 
     [ registerUser( request )( response ) {
@@ -104,4 +111,26 @@ main {
             }
         }
     } ]
+
+    [ logoutUser( request )( response ) {
+
+    synchronized(userLock) {
+        query@Database(
+            "SELECT * FROM users WHERE user_id = '" + request.username + "'"
+        )(users);
+
+        if ( #users.row > 0 ) {
+            update@Database(
+                "UPDATE users SET last_access = NOW() WHERE user_id = '" + request.username + "'"
+            )(resUpdate);
+            response.success = true;
+            response.message = "Logout effettuato con successo.";
+            println@Console("Utente " + request.username + " ha effettuato il logout.")()
+        } else {
+            response.success = false;
+            response.message = "Errore: Utente non trovato.";
+            println@Console("Tentativo di logout fallito: utente " + request.username + " non trovato.")()
+        }
+    }
+} ]
 }

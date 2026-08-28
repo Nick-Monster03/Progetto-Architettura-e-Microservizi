@@ -1,5 +1,3 @@
-=== Choreography ACMEMobility ===
-
 (
     startRental:User -> ACME ;
     preAuthorize:ACME -> Bank ;

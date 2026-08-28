@@ -38,6 +38,18 @@ app.post('/api/registerUser', async (req, res) => {
     }
 });
 
+app.post('/api/logoutUser', async (req, res) => {
+    try {
+        const response = await fetch('http://user-service:8005/logoutUser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        res.json(await response.json());
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'UserService non raggiungibile.' });
+    }
+});
 // ─────────────────────────────────────────────────────────────
 //  Proxy → StationService (Jolie SOAP, porta 8083)
 //  Converte la risposta SOAP in JSON per il browser
@@ -137,5 +149,5 @@ app.get('/api/vehicle-status/:vehicleId', async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 app.listen(port, () => {
-    console.log(`📱 ACME Client App in ascolto su http://localhost:${port}`);
+    console.log(`ACME Client App in ascolto su http://localhost:${port}`);
 });

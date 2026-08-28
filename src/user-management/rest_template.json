@@ -4,5 +4,8 @@
     },
     "loginUser": {
         "method": "post"
+    },
+    "logoutUser": {
+        "method": "post"
     }
 }
