@@ -13,20 +13,28 @@ unlock@ACME ;
 +
 
 /* --- RAMO 2: PRENOTAZIONE --- */
+reserve@ACME ;
 (
-    /* B3: Cancellazione (La stazione non fa nulla) */
-    1
+    /* Veicolo non disponibile */
+    reserveFail_OUT@ACME
     +
-    /* B2: Timeout (La stazione non fa nulla) */
-    1
-    +
-    /* B1: Ritiro (La stazione agisce) */
-    unlock@ACME ;
+    /* Prenotazione accettata */
+    reserveAck_OUT@ACME ;
+
     (
-        unlockFail_OUT@ACME
+        /* B3 e B2: Cancellazione utente o Timeout — la Stazione riceve
+           in entrambi i casi la stessa richiesta di rilascio del veicolo */
+        cancelReservation@ACME ;
+        cancelReservationAck_OUT@ACME
         +
-        unlockAck_OUT@ACME ;
-        lock@ACME ;
-        lockAck_OUT@ACME
+        /* B1: Ritiro Veicolo */
+        unlock@ACME ;
+        (
+            unlockFail_OUT@ACME
+            +
+            unlockAck_OUT@ACME ;
+            lock@ACME ;
+            lockAck_OUT@ACME
+        )
     )
 )
